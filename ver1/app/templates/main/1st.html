@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}KOJ{% endblock %}
+
+{% block content %}
+<a id='back' class="material-icons left-icons" href="{{ url_for('main.index') }}">
+    arrow_back
+</a>
+{{ user['username'] }}
+<ul class="tabs">
+    <li class="tab-link current" data-tab="tab-1">Code</li>
+    <li class="tab-link" data-tab="tab-2">Question</li>
+</ul>
+<div class="container">
+    <div class="row">
+        <div class="col-md-9">
+            <form action="{{ url_for('main.problem', title=title) }}" method="post">
+                <div class="row">
+                    <div class="input-area col-md-8">
+                        <div id="tab-1" class="tab-content current">
+                            <textarea id="editor" name="code" class="code">{{ code }}</textarea>
+                        </div>
+                        <div id="tab-2" class="tab-content">
+                            {% if user['role'] == 1 %}
+                            <textarea id="editor2" name="question" class="question">{{ question }}</textarea>
+                            {% elif user['role'] == 0 %}
+                            <textarea id="editor2" name="question" class="question" readonly>{{ question }}</textarea>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="input-area2 col-md-4">
+                        <div class="half">
+                            {% if user['role'] == 1 %}
+                            <input type="button" class="box" value="&#43;" onclick="addBox()">
+                            <input type="button" class="box" value="&#45;" onclick="minusBox()">
+                            <button type="submit" class="save-content" name="submit-button" value="save">저장</button>
+                            {% elif user['role'] == 0 %}
+                            <input type="button" value="😀" class="box" style="border: 0; background-color: white;">
+                            {% endif %}
+                            <div class="inputs" id="inputs">
+                                {% for input in inputs %}
+                                <textarea placeholder="input" class="input" name="input{{ loop.index }}"
+                                    id="input{{ loop.index }}">{{ input }}</textarea>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="half">
+                            <button type="submit" class="submit-content" name="submit-button"
+                                value="play">&#9658</button>
+                            <div class="expecteds" id="expecteds">
+                                {% for expected in expecteds %}
+                                <textarea placeholder="expected" class="expected" name="expected{{ loop.index }}"
+                                    id="expected{{ loop.index }}">{{ expected }}</textarea>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="output-area col-md-3">
+            <div class="half right">
+                <div class="pfs" id="pfs">
+                    {% for pf in pfs %}
+                    <textarea class="pf" id="pf{{ loop.index }}" name="pf{{ loop.index }}" placeholder="Pass/Fail"
+                        readonly>{{ pf }}</textarea>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="half right">
+                <div id="outputs" class="outputs">
+                    {% for output in outputs %}
+                    <textarea class="output" id="output{{ loop.index }}" name="output{{ loop.index }}"
+                        placeholder="output" readonly>{{ output }}</textarea>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+        mode: "text/x-csrc",
+        theme: "dracula",
+        lineNumbers: true,
+        indentUnit: 4,
+    }).setSize(680, 620);
+
+    let inputs = {{ inputs | safe }};
+    console.log(inputs, typeof (inputs));
+    let count = Object.keys(inputs).length;
+    console.log(count);
+
+    function addBox() {
+        if (count <= 3) {
+            count++;
+            let input = "", output = "", pf = "", expected = "";
+            let input_id = "input" + count;
+            let output_id = "output" + count;
+            let pf_id = "pf" + count;
+            let expected_id = "expected" + count;
+
+            input = `<textarea placeholder="input" class="input" name="${input_id}" id="${input_id}">{{ input }}</textarea>`;
+            document.getElementById("inputs").innerHTML += input;
+
+            pf = `<textarea placeholder="Pass/Fail" class="pf" name="${pf_id}" id="${pf_id}" readonly>{{ pf }}</textarea>`;
+            document.getElementById("pfs").innerHTML += pf;
+
+            output = `<textarea class="output" id=${output_id} name="${output_id}"placeholder="output" readonly>{{output}}</textarea>`
+            document.getElementById("outputs").innerHTML += output;
+
+            expected = `<textarea placeholder="expected" class="expected" name="${expected_id}" id="${expected_id}">{{ expected }}</textarea>`;
+            document.getElementById("expecteds").innerHTML += expected;
+        }
+        else if (count >= 4) {
+            alert("No more testcase!");
+        }
+    }
+
+    function minusBox() {
+        if (count >= 2) {
+            let input = "", output = "", pf = "", expected = "";
+            let input_id = "input" + count;
+            let output_id = "output" + count;
+            let pf_id = "pf" + count;
+            let expected_id = "expected" + count;
+
+            input = document.getElementById(input_id);
+            output = document.getElementById(output_id);
+            pf = document.getElementById(pf_id);
+            expected = document.getElementById(expected_id);
+
+            input.remove();
+            output.remove();
+            pf.remove();
+            expected.remove();
+
+            console.log(input, output, pf, expected);
+            count--;
+            console.log(count);
+        }
+        else if (count <= 1) {
+            alert("need more testcase!");
+        }
+    }
+
+    $('ul.tabs li').click(function () {
+        var tab_id = $(this).attr('data-tab');
+
+        $('ul.tabs li').removeClass('current');
+        $('.tab-content').removeClass('current');
+
+        $(this).addClass('current');
+        $("#" + tab_id).addClass('current');
+    });
+
+    let data = {
+        code: document.getElementById('editor').value,
+        problem_id: {{ problem_id }},
+    };
+
+    console.log(data);
+
+    fetch(`{{ url_for('main.saveCode') }}`, {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify(data),
+            cache: "no-cache",
+            headers: new Headers({
+                "content-type": "application/json"
+            })
+    }).then(function (response) {
+        if (response.status !== 200) {
+            console.log(`Looks like there was a problem. Status code: ${response.status}`);
+            return;
+        }
+    });
+
+    fetch(`{{ url_for('main.getCode') }}`, {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify(data),
+            cache: "no-cache",
+            headers: new Headers({
+                "content-type": "application/json"
+            })
+        }).then(function (response) {
+            if (response.status !== 200) {
+                console.log(`Looks like there was a problem. Status code: ${response.status}`);
+                return;
+            }
+            response.json().then(function (data) {
+                document.getElementById('editor').value = data['code']
+                console.log(data['code']);
+            });
+        })
+            .catch(function (error) {
+                console.log("Fetch error: " + error);
+            });
+            
+
+</script>
+{% endblock %}

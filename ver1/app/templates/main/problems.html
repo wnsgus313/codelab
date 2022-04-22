@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %} problem {% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename = 'css/problems.css') }}">
+{% endblock %}
+
+{% block content %}
+{% for problem in problems %}
+    <div>
+        <p>Title: {{problem.title}}</p>
+    </div>
+    <div>
+        <p>Name: {{problem.name}}</p>
+    </div>
+    <div>
+        <p>Body: {{problem.body}}</p>
+    </div>
+    <br>
+{% endfor %}
+
+
+
+
+<script>
+"use strict";
+
+
+
+</script>
+
+{% endblock %}
+

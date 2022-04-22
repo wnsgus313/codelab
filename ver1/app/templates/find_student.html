@@ -1,0 +1,27 @@
+{% extends "base2.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Flasky - Edit Profile{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>Find Your Student and Change Permission to Moderator</h1>
+</div>
+
+<div class="col-md-6">
+    <div class="description">
+        {% for student in students %}
+            <div class="specify">Email: {{ student.email }} Username: {{ student.name }} Role: {{ student.role.name }}</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="col-md-6">
+    <form action="{{ url_for('.findStudent_change') }}" method="post">
+        <input type="text" name="up" style="width:300px;">
+        <button type="submit" value="submit">Change to Moderator</button>
+    </form>
+</div>
+
+
+{% endblock %}

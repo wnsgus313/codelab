@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} problem {% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename = 'css/problems.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <p>[<span id="title">{{problem.title}}</span>] <span id="name">{{problem.name}}</span></p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p>문제</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p id="body">{{problem.body}}</p>
+        </div>
+    </div>
+    <!-- <div class="row">
+        <div class="col-md-6">
+            <p>입력</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p>첫째 줄에 A와 B가 주어진다. (0 < A, B < 10)</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p>출력</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p>첫째 줄에 A+B를 출력한다.</p>
+        </div>
+    </div> -->
+    <div class="row">
+        <div class="col-md-6">
+            <p>입력 예제 i</p>
+        </div>
+        <div class="col-md-6">
+            <p>출력 예제 i</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <p>1 2</p>
+        </div>
+        <div class="col-md-6">
+            <p>3</p>
+        </div>
+    </div>
+</div>
+
+
+<script>
+"use strict";
+
+
+
+</script>
+
+{% endblock %}
+
+
+

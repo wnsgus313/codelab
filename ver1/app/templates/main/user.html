@@ -1,0 +1,118 @@
+{% extends "base2.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+<!DOCTYPE html>
+<html lang="en">
+    {% block head %}
+    <head>
+        <meta charset="utf-8">
+        
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename = 'user_style.css') }}">
+        <link rel="stylesheet" href="bootstrap/dist/css/bootstrap.css" />
+        
+    </head>
+    {% endblock %}
+
+    {% block navbar %}{% endblock %}
+
+
+    {% block page_content %}
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <!-- Profile picture card-->
+                    <div class="card mb-4 mb-xl-0">
+                        <div class="card-header"><a href="{{ url_for('main.index')}}">Home</a></div>
+                        <div class="card-body text-center">
+                            <!-- Profile picture image-->
+                            <img class="img-account-profile rounded-circle mb-2" src="{{ user.gravatar(size=128) }}">
+                            <div class="row gx-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="small mb-1" for="inputOrgName">Member Since : {{ moment(user.member_since).format('MMMM Do YYYY, h:mm:ss a') }}</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small mb-1" for="inputLocation">Last Seen : {{ moment(user.last_seen, local=True).fromNow()}}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p></p>
+                <div class="col-md-8">
+                    <!-- Account details card-->
+                    <div class="card mb-4">
+                        <!-- <div class="card-header"></div> -->
+                        <div class="card-body">
+                            <div class="profile">
+                                <!-- Form Group (username)-->
+                                <div class="mb-3">
+                                    <label class="small mb-1" for="inputUsername">Username</label>
+                                    <input class="form-control" id="inputUsername" type="text" value="{{ user.username }}" readonly>
+                                </div>
+                                <!-- Form Row-->
+                                <div class="row gx-3 mb-3">
+                                    <!-- Form Group (first name)-->
+                                    <div class="col-md-12">
+                                        <label class="small mb-1" for="inputFirstName">Real Name</label>
+                                        <input class="form-control" id="inputFirstName" type="text" value="{{ user.student_id }}", readonly>
+                                    </div>
+                                    <!-- Form Group (last name) -->
+                                    <div class="col-md-6">
+                                        <label class="small mb-1" for="inputLastName">About Me</label>
+                                        <input class="form-control" id="inputLastName" type="text" value="{{ user.about_me }}", readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="small mb-1" for="inputEmailAddress">Email address</label>
+                                    <input class="form-control" id="inputEmailAddress" type="email" value="{{ user.email }}", readonly>
+                                </div>
+                                <!-- Form Row-->
+                                <div class="row gx-3 mb-3">
+                                    <!-- Form Group (phone number)-->
+                                    <div class="col-md-6">
+                                        <label class="small mb-1" for="inputPhone">Edit Profile</label>
+                                        {% if current_user.is_administrator() %}
+                                        <a href="{{ url_for('.edit_profile_admin', id=user.id) }}" class="form-control">Edit Profile [Admin]</a>
+                                        {% elif current_user.is_prof() %}
+                                        <a href="{{ url_for('.edit_profile_admin', id=user.id) }}" class="form-control">Edit Profile [Prof]</a>
+                                        {% else %}
+                                        <a href="{{ url_for('.edit_profile') }}" class="form-control">Edit Profile</a>
+                                        {% endif %}
+                                    </div>
+                                    <!-- Form Group (birthday)-->
+                                    <div class="col-md-6">
+                                        {% if current_user.is_prof() or current_user.is_administrator()%}
+                                        <label class="small mb-1" for="inputBirthday">Student's Permission</label>
+                                        <a href="{{ url_for('.findStudent', id=user.id) }}" class="form-control">Find Student & Change Permission</a>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if current_user.is_prof() or current_user.is_administrator()%}
+                                        <label class="small mb-1" for="inputProf">Professor's Permission</label>
+                                        <a href="{{ url_for('.findProf', id=user.id) }}" class="form-control">Find Student & Change Permission</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <!-- Save changes button-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    {% endblock %}
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js">  </script>
+    
+    <script src="bootstrap/dist/js/bootstrap.js"></script>
+
+</html>
+
