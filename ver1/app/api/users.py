@@ -91,26 +91,49 @@ def upload_problem(id):
     problem_path = os.path.join(problems_path, id)
     grading_problem_path = os.path.join(grading_path, id)
     data = request.get_json()
-
-    file = data['files']['file']
-    filename = secure_filename(data['files']['filename'])
-    print(grading_problem_path)
+    
+    problem_title = Problem.query.filter_by(title=id).first().title
+    
+    filenames = data['files']['filename'] # file명
+    filedatas = data['files']['file'] # file 데이터
+    
+    for idx, filename in enumerate(filenames):
+        filenames[idx] = secure_filename(filename)
+    
     if not os.path.isdir(problem_path):
         os.mkdir(problem_path)
         os.chmod(problem_path, 0o777)
+        
         os.mkdir(grading_problem_path)
-        a = os.path.join(grading_problem_path, 'cases')
-        os.mkdir(a)
+        os.mkdir(os.path.join(grading_problem_path, 'cases'))
         os.mkdir(os.path.join(grading_problem_path, 'results'))
         os.mkdir(os.path.join(grading_problem_path, 'src'))
-        os.mkdir(os.path.join(grading_problem_path, 'cases', 'problems'))
-        shutil.chown(grading_path, 0o777)
+        os.mkdir(os.path.join(grading_problem_path, 'cases', 'programs'))
     
-    if file and allowed_file(filename):
-        txtfilename = os.path.join(problem_path, filename)
-        f = open(txtfilename, "w+", encoding='utf-8')
-        f.write(file)
-        f.close()
+    prof_filelist = ['input.txt', 'output.txt', 'makefile', problem_title.lower()] # 교수가 제출하면 grading으로 갈 파일리스트
+
+    flag = False
+    for filename, filedata in zip(filenames, filedatas):
+        txtfilename = None
+        
+        if allowed_file(filename):
+            if filename.lower() in prof_filelist:
+                if filename == 'input.txt':
+                    txtfilename = os.path.join(grading_problem_path, 'cases', 'input.txt')
+                elif filename == 'Makefile':
+                    txtfilename = os.path.join(grading_problem_path, 'src', 'Makefile')
+                elif filename.lower() == 'b001':
+                    txtfilename = os.path.join(grading_problem_path, 'cases', 'programs', filename.lower())
+            else: # 학생에게 줄 파일들
+                txtfilename = os.path.join(problem_path, filename)
+        
+            f = open(txtfilename, "w+", encoding='utf-8')
+            f.write(filedata)
+            f.close()              
+            flag = True  
+                
+
+    if flag:
         resp = jsonify({'message': 'Problem successfully uploaded'})
         resp.status_code = 201
         return resp
@@ -118,7 +141,7 @@ def upload_problem(id):
         resp = jsonify(
             {'message': 'Allowed file types are txt, pdf, png, jpg, jpeg, gif, c, md'})
         resp.status_code = 400
-        return resp
+        return resp        
 
 
 # 교수 문제 삭제
