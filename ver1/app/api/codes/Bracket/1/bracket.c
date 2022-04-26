@@ -9,6 +9,8 @@ main ()
 	int top = 0 ;
 
 	char t[101] ;
+
+
 	scanf("%s", t) ;
 
 	int i ;
@@ -34,17 +36,17 @@ main ()
 						top-- ;
 					}
 					else {
-						printf("invalid") ; return 0 ;
+						printf("1") ; return 0 ;
 					}
 				}
 				else {
-					printf("invalid") ; return 0 ;
+					printf("1") ; return 0 ;
 				}
 				break ;
 		}
 	}
 	if (top != 0) {
-		printf("invalid") ;
+		printf("1") ;
 	}
 	else {
 		printf("%d", maxdepth) ;

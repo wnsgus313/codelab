@@ -10,6 +10,7 @@ import shutil
 from flask_login import current_user, login_required
 from .decorators import admin_required_vs, permission_required_vs, prof_required_vs, moderator_required_vs
 import subprocess
+from .. import db
 
 path = os.path.dirname(os.path.abspath(__file__))  # /home/codelab/ver1/app/api
 # /home/codelab/ver1/app/api/problems
@@ -78,24 +79,29 @@ def get_problem(id, filename):
 
 
 ALLOWED_EXTENSIONS = set(
-    ['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'c', 'md'])
+    ['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'c', 'md', 'h'])
+
+STUDENT_ALLOWED_EXTENSIONS = set(['c', 'h'])
 
 
 def allowed_file(filename):
     return ('.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS) or 'Makefile'
+def student_allowed_file(filename):
+    return ('.' in filename and filename.rsplit('.', 1)[1].lower() in STUDENT_ALLOWED_EXTENSIONS)
+
 
 # 교수 문제 제출
-@api.route('problems/<id>', methods=['POST'])
+@api.route('problems/<problem_title>', methods=['POST'])
 @prof_required_vs
-def upload_problem(id):
-    problem_path = os.path.join(problems_path, id)
-    grading_problem_path = os.path.join(grading_path, id)
+def upload_problem(problem_title):
+    problem_path = os.path.join(problems_path, problem_title)
+    grading_problem_path = os.path.join(grading_path, problem_title)
     data = request.get_json()
-    
-    problem_title = Problem.query.filter_by(title=id).first().title
     
     filenames = data['files']['filename'] # file명
     filedatas = data['files']['file'] # file 데이터
+
+    print(filenames)
     
     for idx, filename in enumerate(filenames):
         filenames[idx] = secure_filename(filename)
@@ -121,8 +127,14 @@ def upload_problem(id):
                 if filename == 'input.txt':
                     txtfilename = os.path.join(grading_problem_path, 'cases', 'input.txt')
                 elif filename == 'Makefile':
+                    # 학생도 받을 수 있도록
+                    txtfilename = os.path.join(problem_path, filename)
+                    f = open(txtfilename, "w+", encoding='utf-8')
+                    f.write(filedata)
+                    f.close()  
+                    
                     txtfilename = os.path.join(grading_problem_path, 'src', 'Makefile')
-                elif filename.lower() == 'b001':
+                elif filename.lower() == problem_title.lower() or 'output.file':
                     txtfilename = os.path.join(grading_problem_path, 'cases', 'programs', filename.lower())
             else: # 학생에게 줄 파일들
                 txtfilename = os.path.join(problem_path, filename)
@@ -131,9 +143,23 @@ def upload_problem(id):
             f.write(filedata)
             f.close()              
             flag = True  
+            
+            if filename.lower() == problem_title.lower(): # 실행파일 권한 주기
+                os.chmod(txtfilename, 0o777)
                 
 
     if flag:
+        # db 문제 등록
+        problem = Problem(title=problem_title)
+        db.session.add(problem)
+        
+        problem_id = Problem.query.filter_by(title=problem_title).first().id
+        users = User.query.all()
+        for user in users:
+            solve = Solve(problem_id=problem_id, user_id=user.id)
+            db.session.add(solve)
+        db.session.commit()
+        
         resp = jsonify({'message': 'Problem successfully uploaded'})
         resp.status_code = 201
         return resp
@@ -141,15 +167,15 @@ def upload_problem(id):
         resp = jsonify(
             {'message': 'Allowed file types are txt, pdf, png, jpg, jpeg, gif, c, md'})
         resp.status_code = 400
-        return resp        
+        return resp
 
 
 # 교수 문제 삭제
-@api.route('problems/<id>', methods=['DELETE'])
+@api.route('problems/<problem_title>', methods=['DELETE'])
 @prof_required_vs
-def delete_problem(id):
-    problem_path = os.path.join(problems_path, id)
-    grading_problem_path = os.path.join(grading_path, id)
+def delete_problem(problem_title):
+    problem_path = os.path.join(problems_path, problem_title)
+    grading_problem_path = os.path.join(grading_path, problem_title)
 
     if os.path.isdir(problem_path):
         shutil.rmtree(problem_path)
@@ -162,19 +188,51 @@ def delete_problem(id):
         resp.status_code = 200
         return resp
 
+# 학생코드 삭제
+@api.route('student_codes/<username>/<problem_title>', methods=['DELETE'])
+@moderator_required_vs
+def delete_code(username, problem_title):
+    user_id = str(g.current_user.id)
+    problem_path = os.path.join(codes_path, problem_title)
+    student_code_path = os.path.join(problem_path, user_id)
+    grading_src_path = os.path.join(path, "grading", problem_title, "src")
+
+
+    if os.path.isdir(student_code_path):
+        shutil.rmtree(student_code_path)
+        
+        if os.path.isdir(grading_src_path):
+            grading_src_list = os.listdir(grading_src_path)
+            for file in grading_src_list:
+                if file != 'Makefile':
+                    os.remove(os.path.join(grading_src_path, file))
+        
+        resp = jsonify({'message': 'Code successfully delete'})
+        resp.status_code = 200
+        return resp
+    else:
+        resp = jsonify({'message': 'Not exist Code'})
+        resp.status_code = 200
+        return resp
 
 # 학생코드 제출
-@api.route('student_codes/<username>/<problem_id>', methods=['POST'])
+@api.route('student_codes/<username>/<problem_title>', methods=['POST'])
 @moderator_required_vs
-def upload_code(username, problem_id):
-    # /home/codelab/ver1/app/api/codes/<problem_id>
-    problem_path = os.path.join(codes_path, problem_id)
-    # /home/codelab/ver1/app/api/codes/<problem_id>/<username>
-    student_code_path = os.path.join(problem_path, username)
-
+def upload_code(username, problem_title):
+    
     data = request.get_json()
-    file = data['files']['file']
-    filename = secure_filename(data['files']['filename'])
+    filenames = data['files']['filename'] # file명
+    filedatas = data['files']['file'] # file 데이터
+    user_id = str(g.current_user.id)
+    username = g.current_user.username
+    executable_file = None
+    
+    # /home/codelab/ver1/app/api/codes/<problem_title>
+    problem_path = os.path.join(codes_path, problem_title)
+    # /home/codelab/ver1/app/api/codes/<problem_title>/<username>
+    student_code_path = os.path.join(problem_path, user_id)
+    grading_src_path = os.path.join(path, "grading", problem_title, "src")
+
 
     # dir없으면 생성
     if not os.path.isdir(problem_path):
@@ -184,19 +242,73 @@ def upload_code(username, problem_id):
         os.mkdir(student_code_path)
         os.chmod(student_code_path, 0o777)
 
-    if file and allowed_file(filename):
-        txtfilename = os.path.join(student_code_path, filename)
-        f = open(txtfilename, "w+", encoding='utf-8')
-        f.write(file)
-        f.close()
-        resp = jsonify({'message': 'Problem successfully uploaded'})
-        resp.status_code = 201
-        return resp
+    for filename, filedata in zip(filenames, filedatas):
+        if allowed_file(filename):
+            if student_allowed_file(filename):
+                # grading에 저장
+                txtfilename = os.path.join(grading_src_path, filename)
+                f = open(txtfilename, "w+", encoding='utf-8')
+                f.write(filedata)
+                f.close()      
+
+                # code에 저장
+                txtfilename = os.path.join(student_code_path, filename)
+                f = open(txtfilename, "w+", encoding='utf-8')
+                f.write(filedata)
+                f.close()
+                
+        else:
+            resp = jsonify(
+                {'message': 'Allowed file types are txt, pdf, png, jpg, jpeg, gif, c, h'})
+            resp.status_code = 400
+            return resp
+
+    # 채점
+    filepath = os.path.join(path, "grading/")
+
+    error = None
+    sourcecode = 1  # 수정바람
+    if not sourcecode:
+        error = 'Sourcecode is required'
+
+    if error is not None:
+        flash(error)
     else:
-        resp = jsonify(
-            {'message': 'Allowed file types are txt, pdf, png, jpg, jpeg, gif, c'})
-        resp.status_code = 400
-        return resp
+        executable_file = problem_title.lower() + '_' + user_id
+        subprocess.call("make -C " + grading_src_path, shell=True) # 학생 코드 makefile 실행
+        os.rename(os.path.join(grading_src_path, problem_title.lower()), os.path.join(grading_src_path, problem_title.lower()) + '_' + user_id)
+        subprocess.call(filepath + "compile.sh " +
+                        executable_file + " " + user_id + " " + problem_title, shell=True)
+    
+    
+    out = os.system("diff -bZ {} {}".format(os.path.join(grading_path, problem_title, "results", "result_" + user_id + ".txt"), os.path.join(grading_path, problem_title, "cases", "programs", "output.txt")))
+    
+    message = None
+    if out != 0:
+        print("Wrong Answer\n")
+        message = "Wrong Answer"
+    else:
+        print("맞았습니다\n")
+        message = "Correct Answer"
+    
+    resp = jsonify({'message': message})
+    resp.status_code = 200
+    return resp
+
+
+    # if file and allowed_file(filename):
+    #     txtfilename = os.path.join(student_code_path, filename)
+    #     f = open(txtfilename, "w+", encoding='utf-8')
+    #     f.write(file)
+    #     f.close()
+    #     resp = jsonify({'message': 'Problem successfully uploaded'})
+    #     resp.status_code = 201
+    #     return resp
+    # else:
+    #     resp = jsonify(
+    #         {'message': 'Allowed file types are txt, pdf, png, jpg, jpeg, gif, c'})
+    #     resp.status_code = 400
+    #     return resp
 
 
 # 문제 리스트 가져오기
@@ -218,3 +330,4 @@ def problem_list():
             resolved_list.append(title)
 
     return jsonify({"Solved_Problems": unresolved_list, "Resolved_Problems": resolved_list}), 200
+

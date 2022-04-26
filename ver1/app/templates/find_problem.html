@@ -1,0 +1,27 @@
+{% extends "base2.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Flasky - Edit Profile{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>Find Person and Change Problem Permission</h1>
+</div>
+
+<div class="col-md-6">
+    <div class="description">
+        {% for problem in problems %}
+        <div class="specify">Problem: {{ problem.title }} Permission: {{ problem.permission }}</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="col-md-6">
+    <form action="{{ url_for('.findProblem_change') }}" method="post">
+        <input type="text" name="up" style="width:300px;">
+        <button type="submit" value="submit">Change</button>
+    </form>
+</div>
+
+
+{% endblock %}

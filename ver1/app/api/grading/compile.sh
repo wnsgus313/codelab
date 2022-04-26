@@ -1,8 +1,10 @@
 #!/bin/bash
 #echo $PWD # /home/codelab/ver1
 #echo "$2" 2
-#echo "$1" bracket
+#echo "$1" bracket_{id}
+#echo $3 Bracket
 #echo "${0%/*}" /home/codelab/ver1/app/api/grading
+
 
 if [ "$1" == "" -o "$2" == "" ];then
 	echo "Usage: $0 <id>_<username> <id>"
@@ -11,19 +13,33 @@ fi
 
 cd "${0%/*}"
 
-if [ ! -e "$PWD"/src/$1.c ] || [ ! -e "$PWD"/cases/check.sh ] || [ ! -e "$PWD"/cases/case_$2.txt ] || [ ! -e "$PWD"/cases/programs/case_$2 ]; then
-	echo "docker run error" > results/result_$1.txt
+PWD_ID="$PWD"/"$3" # /home/codelab/ver1/app/api/grading/Bracket
+
+if [ ! -e "$PWD_ID"/src/$1 ] || [ ! -e "$PWD"/check.sh ] || [ ! -e "$PWD_ID"/cases/input.txt ] || [ ! -e "$PWD_ID"/cases/programs/${3,,} ]; then
+	echo "docker run error" > $3/results/result_$2.txt
 	exit 1 
 fi
 
 docker run --ulimit nofile=50:50 --ulimit nproc=100:100 --rm \
--v "$PWD"/src/$1.c:/home/file/$1.c \
--v "$PWD"/src/Makefile:/home/file/Makefile \
--v "$PWD"/cases/check.sh:/home/file/check.sh \
--v "$PWD"/cases/case_$2.txt:/home/file/case_tmp.txt \
--v "$PWD"/cases/programs/case_$2:/home/file/programs/solution \
+-v $PWD_ID/src/$1:/home/file/$1 \
+-v $PWD/check.sh:/home/file/check.sh \
+-v $PWD_ID/cases/input.txt:/home/file/case_tmp.txt \
+-v $PWD_ID/cases/programs/${3,,}:/home/file/programs/solution \
 -w /home/file \
 --user root \
 run2 \
-bash -c "make -s && ./check.sh $1" \
-> results/result_$1.txt
+bash -c "./check.sh $1 $2 $3" \
+> $3/results/result_$2.txt
+
+
+# docker run --ulimit nofile=50:50 --ulimit nproc=100:100 --rm \
+# -v "$PWD"/src/$1.c:/home/file/$1.c \
+# -v "$PWD"/src/Makefile:/home/file/Makefile \
+# -v "$PWD"/cases/check.sh:/home/file/check.sh \
+# -v "$PWD"/cases/case_$2.txt:/home/file/case_tmp.txt \
+# -v "$PWD"/cases/programs/case_$2:/home/file/programs/solution \
+# -w /home/file \
+# --user root \
+# run2 \
+# bash -c "make -s && ./check.sh $1" \
+# > results/result_$1.txt

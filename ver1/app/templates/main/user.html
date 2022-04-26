@@ -97,6 +97,12 @@
                                         <a href="{{ url_for('.findProf', id=user.id) }}" class="form-control">Find Student & Change Permission</a>
                                         {% endif %}
                                     </div>
+                                    <div class="col-md-6">
+                                        {% if current_user.is_prof() or current_user.is_administrator()%}
+                                        <label class="small mb-1" for="inputProf">Problem Permission</label>
+                                        <a href="{{ url_for('.findProblem', id=user.id) }}" class="form-control">Problem Permission</a>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 <!-- Save changes button-->
                             </div>

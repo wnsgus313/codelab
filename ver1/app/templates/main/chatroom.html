@@ -1,0 +1,97 @@
+{% extends "darkbase2.html" %}
+{% block title %}Classroom{% endblock %}
+{% block navbar %}
+{% endblock %}
+
+{% block content %}
+<section class="comments">
+        <div class="comments" id="comments">
+                {% for comment in comments %}
+                        <div class="comment-card" >
+                                <div class="username">{{ comment.username }}</div>
+                                <div>{{ comment.body }}</div>
+                        </div>
+                {% endfor %}
+        </div>
+</section>
+<div style="display: flex;">      
+        <textarea class="underline" name="comment" id="comment" style="width: 300px;" placeholder="Enter the comment" style="color: black;" required></textarea>
+        <button onclick='make_comment()' class="comment-btn">send</button>
+</div>
+<script>
+        function make_comment() {
+                var html_body = $('#comment').val();
+                var data = {
+                        body: html_body,
+                        username: 1,
+                }
+                $('#comment').val('');
+                
+                fetch(`${window.origin}/codelab/chatroom`, {
+                        method: "POST",
+                        credentials: "include",
+                        body: JSON.stringify(data),
+                        cache: "no-cache",
+                        headers: new Headers({
+                                "content-type": "application/json"
+                        })
+                }).then(function (response) {
+                        if (response.status !== 200) {
+                                console.log(`Looks like there was a problem. Status code: ${response.status}`);
+                                return;
+                        }
+                        response.json().then(function (data) {
+                                var datas = data;
+                                console.log(data.body)
+                                var body = "";
+                                body += "<div class='comment-card' ><div class='username'>"+data.username + "</div>" ;
+                                body += "<div>"+data.body + "</div></div>";
+                                $("#comments").append(body);
+                                $("#comment").val(' ');
+                        });
+                })
+                .catch(function (error) {
+                        console.log("Fetch error: " + error);
+                });
+        }
+
+        // setInterval(function () {
+        //         var html_body = $('#comment').val();
+        //         var data = {
+        //                 body: html_body,
+        //                 username: 1,
+        //         }
+        //         fetch(`${window.origin}/codelab/get_comments`, {
+        //                 method: "POST",
+        //                 credentials: "include",
+        //                 body: JSON.stringify(data),
+        //                 cache: "no-cache",
+        //                 headers: new Headers({
+        //                         "content-type": "application/json"
+        //                 })
+        //         }).then(function (response) {
+        //                 if (response.status !== 200) {
+        //                         console.log(`Looks like there was a problem. Status code: ${response.status}`);
+        //                         return;
+        //                 }
+        //                 response.json().then(function (data) {
+        //                         var datas = data
+        //                         var body = ""
+        //                         for(var i=0; i<datas.length; i++) {
+        //                                 body += " <div class='comment-card' ><div class='username'>"+datas[i].username + "</div>" ;
+        //                                 body += "<div>"+datas[i].body + "</div></div>";
+        //                         }
+        //                         document.getElementById("comments").innerHTML = body;
+        //                 });
+        //         }).catch(function (error) {
+        //                 console.log("Fetch error: " + error);
+        //         });
+        // }, 1000);
+
+
+
+</script>
+
+{% endblock %}
+
+

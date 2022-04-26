@@ -6,7 +6,7 @@ from flask import render_template, redirect, url_for, abort, flash, request,\
 from flask.wrappers import Response
 from . import main
 from .. import db
-from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Solve
+from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Solve, Comment
 from flask_login import current_user, login_required
 import json, time
 import subprocess
@@ -426,8 +426,6 @@ def getCode():
     return make_response(jsonify(code), 200)
 
 
-
-
 @main.route('/problems/list')
 @login_required
 def problem_list():
@@ -462,3 +460,84 @@ def problem_submit():
     db.session.commit()
 
     return render_template('main/problem_submit.html')
+
+# @main.route('/chatroom', methods=['GET', 'POST'])
+# @login_required
+# def chatroom():
+#     if request.method == 'POST':
+#         error = None    
+#         jsonData = request.get_json(force = True)
+#         body = jsonData['body']
+#         comment = None
+
+#         if not body:
+#             error = 'Comment is required'
+        
+#         if error is not None:
+#             flash(error)
+#         else:
+#             comment = Comment(user_id = current_user.id, username = current_user.username, body = body)
+#             db.session.add(comment)
+#             db.session.commit()
+
+#             data = {
+#                 "body": comment.body, 
+#                 "username": comment.username, 
+#                 "time": comment.timestamp,
+#             }
+            
+#             return make_response(jsonify(data), 200)
+        
+#     comments = Comment.query.filter_by().all()
+#     return render_template('main/chatroom.html', comments = comments)
+
+# @main.route('/get_comments', methods=['POST'])
+# @login_required
+# def get_comments():
+#     data = request.get_json()
+#     comments = Comment.query.all()
+#     # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
+#     comments_dict = [] 
+#     for comment in comments:
+#         comments_dict.append(
+#             {
+#                 "body": comment.body, 
+#                 "username": comment.username, 
+#                 "time": comment.timestamp,
+#             }
+#         )
+#     return make_response(jsonify(comments_dict), 200)
+
+
+@main.route('/find-problem', methods=['GET', 'POST'])
+@login_required
+@prof_required
+def findProblem():
+    students = User.query.all()
+    problems = Problem.query.all()
+    return render_template('find_problem.html', problems=problems)
+
+# 검색한 학생 이메일 받음
+@main.route('/find-problem/submit', methods=['GET', 'POST'])
+@login_required
+@prof_required
+def findProblem_change():
+    problem_title = request.form['up']
+    all_problem = Problem.query.all()
+    if Problem.query.filter_by(title=problem_title).first(): 
+        problem = Problem.query.filter_by(totle=problem_title).first()
+    else:
+        flash("Unregistered problem.")
+        return render_template('find_prof.html', problems=all_problem)
+        # user = current_user     
+        # return render_template('main/user.html', user=user)
+    if problem.permission == True:
+        flash("This problem already has permission.")
+        # user = current_user     
+    else:
+        problem.permission = True
+        db.session.add(problem)
+        db.session.commit()
+        flash(problem.title + "'s Permission has changed")
+        return render_template('find_problem.html', problems=all_problem)
+    return render_template('find_problem.html', problems=all_problem)
