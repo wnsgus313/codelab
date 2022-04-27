@@ -36,17 +36,17 @@ main ()
 						top-- ;
 					}
 					else {
-						printf("invalid") ; return 0 ;
+						printf("invalid1") ; return 0 ;
 					}
 				}
 				else {
-					printf("invalid") ; return 0 ;
+					printf("invalid1") ; return 0 ;
 				}
 				break ;
 		}
 	}
 	if (top != 0) {
-		printf("invalid") ;
+		printf("invalid1") ;
 	}
 	else {
 		printf("%d", maxdepth) ;

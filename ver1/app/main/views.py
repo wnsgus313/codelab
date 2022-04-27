@@ -6,7 +6,7 @@ from flask import render_template, redirect, url_for, abort, flash, request,\
 from flask.wrappers import Response
 from . import main
 from .. import db
-from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Solve, Comment
+from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Comment
 from flask_login import current_user, login_required
 import json, time
 import subprocess
@@ -513,7 +513,6 @@ def problem_submit():
 @login_required
 @prof_required
 def findProblem():
-    students = User.query.all()
     problems = Problem.query.all()
     return render_template('find_problem.html', problems=problems)
 
@@ -525,7 +524,7 @@ def findProblem_change():
     problem_title = request.form['up']
     all_problem = Problem.query.all()
     if Problem.query.filter_by(title=problem_title).first(): 
-        problem = Problem.query.filter_by(totle=problem_title).first()
+        problem = Problem.query.filter_by(title=problem_title).first()
     else:
         flash("Unregistered problem.")
         return render_template('find_prof.html', problems=all_problem)
@@ -536,7 +535,6 @@ def findProblem_change():
         # user = current_user     
     else:
         problem.permission = True
-        db.session.add(problem)
         db.session.commit()
         flash(problem.title + "'s Permission has changed")
         return render_template('find_problem.html', problems=all_problem)

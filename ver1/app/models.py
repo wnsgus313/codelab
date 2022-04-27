@@ -69,6 +69,24 @@ class Role(db.Model):
     def has_permission(self, perm):
         return self.permissions & perm == perm
 
+
+
+class Code(db.Model):
+    __tablename__ = "code"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id', ondelete="CASCADE"))
+    problem = db.relationship(
+        "Problem",
+        back_populates="code"
+    )
+    
+    pf = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f'{self.user_id}, {self.problem_id}, {self.pf}'
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
@@ -198,29 +216,26 @@ class Problem(db.Model):
     body = db.Column(db.String(10000))
     permission = db.Column(db.Boolean, default=False)
     
+    code = db.relationship(
+        "Code",
+        back_populates="problem",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    
     def __repr__(self):
         return '<Problem %r>' % self.title
 
-class Solve(db.Model):
-    __tablename__ = "solve"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'))
-    resolved = db.Column(db.Boolean, default=False)
-
-    def __repr__(self):
-        return '<Resolved %r>' % self.resolved
-
-class Code(db.Model):
-    __tablename__ = 'code'
-    id = db.Column(db.Integer, primary_key=True)
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    source = db.Column(db.String(10000))
-    pf = db.Column(db.Boolean, default=False)
+# class Code(db.Model):
+#     __tablename__ = 'code'
+#     id = db.Column(db.Integer, primary_key=True)
+#     problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'))
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+#     source = db.Column(db.String(10000))
+#     pf = db.Column(db.Boolean, default=False)
     
-    def __repr__(self):
-        return '<Code %r>' % self.source
+#     def __repr__(self):
+#         return '<Code %r>' % self.pf
 
 
 

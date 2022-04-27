@@ -2,7 +2,7 @@ from fileinput import filename
 from flask import jsonify, request, current_app, url_for, g
 from sqlalchemy import true
 from . import api
-from ..models import User, Problem, Solve
+from ..models import User, Problem, Code
 import os
 from werkzeug.utils import secure_filename
 from flask import send_file, send_from_directory, flash
@@ -156,8 +156,8 @@ def upload_problem(problem_title):
         problem_id = Problem.query.filter_by(title=problem_title).first().id
         users = User.query.all()
         for user in users:
-            solve = Solve(problem_id=problem_id, user_id=user.id)
-            db.session.add(solve)
+            code = Code(problem_id=problem_id, user_id=user.id)
+            db.session.add(code)
         db.session.commit()
         
         resp = jsonify({'message': 'Problem successfully uploaded'})
@@ -176,10 +176,18 @@ def upload_problem(problem_title):
 def delete_problem(problem_title):
     problem_path = os.path.join(problems_path, problem_title)
     grading_problem_path = os.path.join(grading_path, problem_title)
+    
+    # db 문제 삭제, problem
+    problem = Problem.query.filter_by(title=problem_title).first()
+    print(problem.code) ## 이걸 해야지 삭제가 된다.... 중요!!!
+    if problem:
+        db.session.delete(problem)
+        db.session.commit()
 
     if os.path.isdir(problem_path):
         shutil.rmtree(problem_path)
         shutil.rmtree(grading_problem_path)
+        
         resp = jsonify({'message': 'Problem successfully delete'})
         resp.status_code = 200
         return resp
@@ -197,6 +205,12 @@ def delete_code(username, problem_title):
     student_code_path = os.path.join(problem_path, user_id)
     grading_src_path = os.path.join(path, "grading", problem_title, "src")
 
+    problem_id = Problem.query.filter_by(title=problem_title).first().id
+
+    code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
+    if code:
+        db.session.delete(code)
+        db.session.commit()
 
     if os.path.isdir(student_code_path):
         shutil.rmtree(student_code_path)
@@ -219,7 +233,6 @@ def delete_code(username, problem_title):
 @api.route('student_codes/<username>/<problem_title>', methods=['POST'])
 @moderator_required_vs
 def upload_code(username, problem_title):
-    
     data = request.get_json()
     filenames = data['files']['filename'] # file명
     filedatas = data['files']['file'] # file 데이터
@@ -233,6 +246,13 @@ def upload_code(username, problem_title):
     student_code_path = os.path.join(problem_path, user_id)
     grading_src_path = os.path.join(path, "grading", problem_title, "src")
 
+    problem_id = Problem.query.filter_by(title=problem_title).first().id
+
+    code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
+    if code is None:
+        code = Code(problem_id=problem_id, user_id=g.current_user.id)
+        db.session.add(code)
+        db.session.commit()
 
     # dir없으면 생성
     if not os.path.isdir(problem_path):
@@ -287,9 +307,14 @@ def upload_code(username, problem_title):
     if out != 0:
         print("Wrong Answer\n")
         message = "Wrong Answer"
+        code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
+        code.pf = False
     else:
         print("맞았습니다\n")
         message = "Correct Answer"
+        code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
+        code.pf = True
+    db.session.commit()
     
     resp = jsonify({'message': message})
     resp.status_code = 200
@@ -312,22 +337,29 @@ def upload_code(username, problem_title):
 
 
 # 문제 리스트 가져오기
-
-
 @api.route('problems/list', methods=['GET'])
 @moderator_required_vs
 def problem_list():
-    problems = Solve.query.filter_by(user_id=g.current_user.id).all()
+    codes = Code.query.filter_by(user_id=g.current_user.id).all()
 
+    all_list = []
     unresolved_list = []
     resolved_list = []
     print(g.current_user.id)
-    for problem in problems:
-        title = Problem.query.filter_by(id=problem.problem_id).first().title
-        if (problem.resolved == False):
+    for code in codes:
+        title = Problem.query.filter_by(id=code.problem_id).first().title
+        question = Problem.query.filter_by(id=code.problem_id).first()
+
+        if g.current_user.role.name == 'Administrator' or g.current_user.role.name == 'Prof':
+            all_list.append(title)
+        elif question.permission == True:
+            all_list.append(title)
+
+        if code.pf == False and question.permission == True:
             unresolved_list.append(title)
-        elif (problem.resolved == True):
+        elif code.pf == True and question.permission == True:
             resolved_list.append(title)
 
-    return jsonify({"Solved_Problems": unresolved_list, "Resolved_Problems": resolved_list}), 200
+    return jsonify({"All_Problems": all_list, "Solved_Problems": unresolved_list, "Resolved_Problems": resolved_list}), 200
+
 
