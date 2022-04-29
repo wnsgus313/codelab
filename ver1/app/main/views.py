@@ -2,7 +2,7 @@ from cmath import exp
 from this import d
 from xml.etree.ElementTree import tostring
 from flask import render_template, redirect, url_for, abort, flash, request,\
-    current_app, make_response, jsonify
+    current_app, make_response, jsonify, g
 from flask.wrappers import Response
 from . import main
 from .. import db
@@ -16,7 +16,7 @@ from sys import stderr
 import os
 from filecmp import cmp
 import traceback
-from .forms import EditProfileForm, EditProfileAdminForm, EditProfileProfForm, EditProfileModeratorForm
+from .forms import EditProfileForm, EditProfileAdminForm, EditProfileProfForm, EditProfileModeratorForm, LoginForm
 
 from werkzeug.utils import secure_filename
 from ..decorators import admin_required, permission_required, prof_required
@@ -461,52 +461,65 @@ def problem_submit():
 
     return render_template('main/problem_submit.html')
 
-# @main.route('/chatroom', methods=['GET', 'POST'])
-# @login_required
-# def chatroom():
-#     if request.method == 'POST':
-#         error = None    
-#         jsonData = request.get_json(force = True)
-#         body = jsonData['body']
-#         comment = None
+@main.route('/enterChatroom', methods=['GET', 'POST'])
+def enterChatroom():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = form.username.data
+        if user is not None:
+            next = request.args.get('next')
+            if next is None or not next.startswith('/'):
+                next = url_for('main.chatroom',)
+            return redirect(next)
+        flash('Invalid username or password.')
 
-#         if not body:
-#             error = 'Comment is required'
+    return render_template('main/enterChatroom.html', form=form)
+
+@main.route('/chatroom', methods=['GET', 'POST'])
+def chatroom():
+    if request.method == 'POST':
+        error = None    
+        jsonData = request.get_json(force = True)
+        body = jsonData['body']
+        comment = None
+        username = request.args.get('nickname', default="Anonymous")
+
+        if not body:
+            error = 'Comment is required'
         
-#         if error is not None:
-#             flash(error)
-#         else:
-#             comment = Comment(user_id = current_user.id, username = current_user.username, body = body)
-#             db.session.add(comment)
-#             db.session.commit()
+        if error is not None:
+            flash(error)
+        else:
+            comment = Comment(username = username, body = body)
+            db.session.add(comment)
+            db.session.commit()
 
-#             data = {
-#                 "body": comment.body, 
-#                 "username": comment.username, 
-#                 "time": comment.timestamp,
-#             }
+            data = {
+                "body": comment.body, 
+                "username": comment.username, 
+                "time": comment.timestamp,
+            }
             
-#             return make_response(jsonify(data), 200)
+            return make_response(jsonify(data), 200)
         
-#     comments = Comment.query.filter_by().all()
-#     return render_template('main/chatroom.html', comments = comments)
+    comments = Comment.query.filter_by().all()
+    return render_template('main/chatroom.html', comments = comments)
 
-# @main.route('/get_comments', methods=['POST'])
-# @login_required
-# def get_comments():
-#     data = request.get_json()
-#     comments = Comment.query.all()
-#     # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
-#     comments_dict = [] 
-#     for comment in comments:
-#         comments_dict.append(
-#             {
-#                 "body": comment.body, 
-#                 "username": comment.username, 
-#                 "time": comment.timestamp,
-#             }
-#         )
-#     return make_response(jsonify(comments_dict), 200)
+@main.route('/get_comments', methods=['POST'])
+def get_comments():
+    data = request.get_json()
+    comments = Comment.query.all()
+    # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
+    comments_dict = [] 
+    for comment in comments:
+        comments_dict.append(
+            {
+                "body": comment.body, 
+                "username": comment.username, 
+                "time": comment.timestamp,
+            }
+        )
+    return make_response(jsonify(comments_dict), 200)
 
 
 @main.route('/find-problem', methods=['GET', 'POST'])
@@ -539,3 +552,77 @@ def findProblem_change():
         flash(problem.title + "'s Permission has changed")
         return render_template('find_problem.html', problems=all_problem)
     return render_template('find_problem.html', problems=all_problem)
+
+
+@main.route('/chat', methods=['GET', 'POST'])
+def chatrooms():
+    token = request.args.get('token')
+    username = request.args.get('username')
+    user_id = None
+    if token is not None and username is not None:
+        user_id = User.verify_auth_token(token)
+        
+    if request.method == 'POST':
+        error = None    
+        jsonData = request.get_json(force = True)
+        body = jsonData['body']
+        username = jsonData['username']
+        user_id = jsonData['user_id']
+
+        comment = None
+
+        if not body:
+            error = 'Comment is required'
+        
+        if error is not None:
+            flash(error)
+        else:
+            comment = Comment(user_id = user_id, username = username, body = body)
+            db.session.add(comment)
+            db.session.commit()
+
+            data = {
+                "body": comment.body, 
+                "username": comment.username, 
+                "time": comment.timestamp,
+                "username": username,
+            }
+            
+            return make_response(jsonify(data), 200)
+        
+    if user_id is None:
+        return render_template('403.html')
+
+    comments = Comment.query.filter_by().all()
+    return render_template('main/chat.html', comments = comments, user_id=user_id, username=username)
+
+@main.route('/comments_get', methods=['POST'])
+def comments_get():
+    data = request.get_json()
+    comments = Comment.query.all()
+    # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
+    comments_dict = [] 
+    for comment in comments:
+        comments_dict.append(
+            {
+                "body": comment.body, 
+                "username": comment.username, 
+                "time": comment.timestamp,
+            }
+        )
+    return make_response(jsonify(comments_dict), 200)
+
+
+@main.route('/upload_video/<problem_title>', methods=['POST'])
+def upload_video(problem_title):
+    a = request.files['file']
+    print(a.filename) # video.mp4
+    v_path = os.path.join(path, 'code')
+    print(v_path) # /home/codelab/ver1/app/main/code
+                         
+    a.save(os.path.join(v_path, a.filename))
+                         
+    resp = jsonify({'message': 'Not exist Code'})
+    resp.status_code = 200
+    return resp
+    

@@ -1,0 +1,18 @@
+{% extends "darkbase.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{%block content %}
+<div class="page-header">
+    <h1 style="color: #ffffff">Login</h1>
+</div>
+<div class="align-center">
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.username.label() }}
+            {{ form.username(class = "form-control") }}
+        </div>
+        {{ form.submit(class = "btn-lg") }}
+    </form>
+</div>
+{% endblock %}

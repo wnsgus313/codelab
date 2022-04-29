@@ -17,6 +17,7 @@ path = os.path.dirname(os.path.abspath(__file__))  # /home/codelab/ver1/app/api
 problems_path = os.path.join(path, "problems")
 codes_path = os.path.join(path, "codes")  # /home/codelab/ver1/app/api/codes
 grading_path = os.path.join(path, "grading")
+videos_path = os.path.join(path, 'videos')
 
 
 @api.route('/temp', methods=['GET'])  # 수정바람
@@ -363,3 +364,45 @@ def problem_list():
     return jsonify({"All_Problems": all_list, "Solved_Problems": unresolved_list, "Resolved_Problems": resolved_list}), 200
 
 
+
+ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'zip']
+def allowed_video_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
+# video 업로드
+@api.route('video/<problem_title>', methods=['POST'])
+@moderator_required_vs
+def upload_video(problem_title):
+    user_id = str(g.current_user.id)
+    print(user_id, 'zxzxzx')
+    problem_video_path = os.path.join(videos_path, problem_title)
+    student_video_path = os.path.join(problem_video_path, user_id)
+    
+    if 'file' not in request.files:
+        resp = jsonify({'message': 'Not video file'})
+        resp.status_code = 404
+        return resp
+        
+    if not os.path.isdir(problem_video_path):
+        os.mkdir(problem_video_path)
+        os.chmod(problem_video_path, 0o777)        
+    if not os.path.isdir(student_video_path):
+        os.mkdir(student_video_path)
+        os.chmod(student_video_path, 0o777)
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        resp = jsonify({'message': 'Not video filename'})
+        resp.status_code = 404
+        return resp       
+    
+    if file and allowed_video_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(student_video_path, filename))
+                         
+    resp = jsonify({'message': 'Success upload video'})
+    resp.status_code = 200
+    return resp
+    

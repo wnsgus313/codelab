@@ -15,8 +15,8 @@ cd "${0%/*}"
 
 PWD_ID="$PWD"/"$3" # /home/codelab/ver1/app/api/grading/Bracket
 
-if [ ! -e "$PWD_ID"/src/$1 ] || [ ! -e "$PWD"/check.sh ] || [ ! -e "$PWD_ID"/cases/input.txt ] || [ ! -e "$PWD_ID"/cases/programs/${3,,} ]; then
-	echo "docker run error" > $3/results/result_$2.txt
+if [ ! -e "$PWD_ID"/src/$1 ] || [ ! -e "$PWD"/check.sh ] || [ ! -e "$PWD_ID"/cases/input.txt ] || [ ! -e "$PWD_ID"/cases/programs/output.txt ]; then
+	echo "docker run error" ${3,,} "$PWD_ID"/src/$1 a "$PWD"/check.sh b "$PWD_ID"/cases/input.txt c "$PWD_ID"/cases/programs/${3,,} > $3/results/result_$2.txt
 	exit 1 
 fi
 

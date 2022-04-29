@@ -19,11 +19,19 @@
         <button onclick='make_comment()' class="comment-btn">send</button>
 </div>
 <script>
+
+        var url_string = (window.location.href).toLowerCase();
+        var url = new URL(url_string);
+        var name = url.searchParams.get("nickname");
+        console.log(name);
+  
+
         function make_comment() {
                 var html_body = $('#comment').val();
                 var data = {
                         body: html_body,
                         username: 1,
+                        url_string: url_string
                 }
                 $('#comment').val('');
                 
@@ -45,7 +53,7 @@
                                 console.log(data.body)
                                 var body = "";
                                 body += "<div class='comment-card' ><div class='username'>"+data.username + "</div>" ;
-                                body += "<div>"+data.body + "</div></div>";
+                                body += "<div>"+data.body + data.url_string + "</div></div>";
                                 $("#comments").append(body);
                                 $("#comment").val(' ');
                         });
@@ -55,38 +63,38 @@
                 });
         }
 
-        // setInterval(function () {
-        //         var html_body = $('#comment').val();
-        //         var data = {
-        //                 body: html_body,
-        //                 username: 1,
-        //         }
-        //         fetch(`${window.origin}/codelab/get_comments`, {
-        //                 method: "POST",
-        //                 credentials: "include",
-        //                 body: JSON.stringify(data),
-        //                 cache: "no-cache",
-        //                 headers: new Headers({
-        //                         "content-type": "application/json"
-        //                 })
-        //         }).then(function (response) {
-        //                 if (response.status !== 200) {
-        //                         console.log(`Looks like there was a problem. Status code: ${response.status}`);
-        //                         return;
-        //                 }
-        //                 response.json().then(function (data) {
-        //                         var datas = data
-        //                         var body = ""
-        //                         for(var i=0; i<datas.length; i++) {
-        //                                 body += " <div class='comment-card' ><div class='username'>"+datas[i].username + "</div>" ;
-        //                                 body += "<div>"+datas[i].body + "</div></div>";
-        //                         }
-        //                         document.getElementById("comments").innerHTML = body;
-        //                 });
-        //         }).catch(function (error) {
-        //                 console.log("Fetch error: " + error);
-        //         });
-        // }, 1000);
+        setInterval(function () {
+                var html_body = $('#comment').val();
+                var data = {
+                        body: html_body,
+                        username: 1,
+                }
+                fetch(`${window.origin}/codelab/get_comments`, {
+                        method: "POST",
+                        credentials: "include",
+                        body: JSON.stringify(data),
+                        cache: "no-cache",
+                        headers: new Headers({
+                                "content-type": "application/json"
+                        })
+                }).then(function (response) {
+                        if (response.status !== 200) {
+                                console.log(`Looks like there was a problem. Status code: ${response.status}`);
+                                return;
+                        }
+                        response.json().then(function (data) {
+                                var datas = data
+                                var body = ""
+                                for(var i=0; i<datas.length; i++) {
+                                        body += " <div class='comment-card' ><div class='username'>"+datas[i].username + "</div>" ;
+                                        body += "<div>"+datas[i].body + "</div></div>";
+                                }
+                                document.getElementById("comments").innerHTML = body;
+                        });
+                }).catch(function (error) {
+                        console.log("Fetch error: " + error);
+                });
+        }, 1000);
 
 
 

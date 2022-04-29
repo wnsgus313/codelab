@@ -117,3 +117,9 @@ class EditProfileModeratorForm(FlaskForm):
         if field.data != self.user.username and \
                 User.query.filter_by(username=field.data).first():
             raise ValidationError('Username already in use.')
+
+class LoginForm(FlaskForm):
+    username = StringField('ID', validators=[
+        DataRequired(), Length(1, 64),
+        Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0, 'Usernames must have only letters, numbers, dots or underscores')])
+    submit = SubmitField('Login')
