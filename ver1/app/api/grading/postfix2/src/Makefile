@@ -1,9 +1,9 @@
 CC=gcc
 CFLASGS=-g -Wall
-OBJS=carbohydrate.o
-TARGET=carbohydrate
+OBJS=postfix2.o
+TARGET=postfix2
 
 $(TARGET) : $(OBJS)
 	$(CC) -o $@ $(OBJS)
 				 
-main.o: carbohydrate.c
+main.o: postfix2.c

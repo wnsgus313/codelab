@@ -2,7 +2,7 @@ from fileinput import filename
 from flask import jsonify, request, current_app, url_for, g
 from sqlalchemy import true
 from . import api
-from ..models import User, Problem, Code
+from ..models import User, Problem, Code, Comment, Log
 import os
 from werkzeug.utils import secure_filename
 from flask import send_file, send_from_directory, flash
@@ -308,11 +308,19 @@ def upload_code(username, problem_title):
     if out != 0:
         print("Wrong Answer\n")
         message = "Wrong Answer"
+        body = g.current_user.email + '<br>' + problem_title + '<br>'  +message
+        comment_chat = Comment(username='Chat Bot', body=body)
+        db.session.add(comment_chat)
+        db.session.commit()
         code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
         code.pf = False
     else:
         print("맞았습니다\n")
         message = "Correct Answer"
+        body = g.current_user.email + '<br>' + problem_title + '<br>' + message
+        comment_chat = Comment(username='Chat Bot', body=body)
+        db.session.add(comment_chat)
+        db.session.commit()
         code = Code.query.filter_by(problem_id=problem_id, user_id=g.current_user.id).first()
         code.pf = True
     db.session.commit()
@@ -375,7 +383,7 @@ def allowed_video_file(filename):
 @moderator_required_vs
 def upload_video(problem_title):
     user_id = str(g.current_user.id)
-    print(user_id, 'zxzxzx')
+
     problem_video_path = os.path.join(videos_path, problem_title)
     student_video_path = os.path.join(problem_video_path, user_id)
     
@@ -405,4 +413,83 @@ def upload_video(problem_title):
     resp = jsonify({'message': 'Success upload video'})
     resp.status_code = 200
     return resp
+    
+
+#학생 코드 받는거
+@api.route('student_codes/<id>/<student_id>/<filename>', methods=['GET'])
+@prof_required_vs
+def get_student_code(id, student_id, filename):
+
+    code_path = os.path.join(codes_path, id, student_id)
+
+    file = os.path.join(code_path, secure_filename(filename))
+
+    if file:
+        return send_file(file, download_name=filename, as_attachment=True, attachment_filename=filename)
+    else:
+        return '', 404
+
+
+@api.route('student_codes/<id>', methods=['GET'])  # 문제 file list 반납
+def get_student_all(id):
+    code_path = os.path.join(codes_path, id, '')
+
+    dir_list = os.listdir(code_path)
+
+    email_list = []
+
+    for i in range(len(dir_list)):
+        email = User.query.filter_by(id=int(dir_list[i])).first().email
+        email_list.append(email)
+
+    if len(dir_list) >= 1:
+        return {'dir_list': dir_list, 'email_list': email_list}, 200
+    else:
+        return '', 404
+
+@api.route('student_codes/<id>/<student_id>', methods=['GET'])  # 문제 file list 반납
+def get_student_filelist(id, student_id):
+    code_path = os.path.join(codes_path, id, student_id)
+
+    file_list = os.listdir(code_path)
+
+    if len(file_list) >= 1:
+        return {'file_list': file_list}, 200
+    else:
+        return '', 404
+
+
+# log 보내기
+@api.route('logs', methods=['POST'])
+@moderator_required_vs
+def post_logs():
+    student_id = str(g.current_user.id)
+    data = request.get_json()
+    flag = True if data['flag'] == 1 else False
+    code = data['code']
+    total_length = data['length']
+    username = User.query.filter_by(id=student_id).first().username
+    print(code, total_length, flag)
+        # 이미 존재하는 log가 있는지 확인
+        
+    length = total_length - Log.query.filter_by(username=username).order_by(Log.timestamp.desc()).first().total_length if Log.query.filter_by(username=username).order_by(Log.timestamp.desc()).first() else total_length
+        
+    log = Log(user_id=student_id, code=code, flag=flag, total_length=total_length, length=length, username=username)
+    db.session.add(log)
+    db.session.commit()
+        
+    resp = jsonify({'message': "success"})
+    resp.status_code = 200
+    return resp
+    
+
+# log 받기  
+@api.route('logs', methods=['GET'])
+@prof_required_vs
+def get_logs():
+    users = Log.query.group_by(Log.user_id).all()
+    user_list = []
+    log = []
+    for user in users:
+        user_list.append(user.user_id)
     

@@ -41,5 +41,8 @@ def before_request():
 def get_token():
     if g.token_used:
         return unauthorized('Invalid credentials')
+    username = User.query.filter_by(id=g.current_user.id).first().username
+    role = User.query.filter_by(id=g.current_user.id).first().role_id
+
     return jsonify({'token': g.current_user.generate_auth_token(
-        expiration=3600), 'expiration': 3600})
+        expiration=3600), 'expiration': 3600, 'username': username, 'role': role})

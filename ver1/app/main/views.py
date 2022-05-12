@@ -1,12 +1,10 @@
-from cmath import exp
-from this import d
 from xml.etree.ElementTree import tostring
 from flask import render_template, redirect, url_for, abort, flash, request,\
     current_app, make_response, jsonify, g
 from flask.wrappers import Response
 from . import main
 from .. import db
-from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Comment
+from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Comment, Log
 from flask_login import current_user, login_required
 import json, time
 import subprocess
@@ -15,8 +13,14 @@ import os.path
 from sys import stderr
 import os
 from filecmp import cmp
-import traceback
 from .forms import EditProfileForm, EditProfileAdminForm, EditProfileProfForm, EditProfileModeratorForm, LoginForm
+
+import io
+import random
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.backends.backend_svg import FigureCanvasSVG
+from matplotlib.figure import Figure
 
 from werkzeug.utils import secure_filename
 from ..decorators import admin_required, permission_required, prof_required
@@ -248,6 +252,7 @@ def problem(title):
     
 
     return render_template('main/1st.html', user=user, code=code, inputs=inputs, outputs=outputs, pfs=pfs, expecteds=expecteds, question=problem.body, title=title, problem_id=problem.id)
+
 
 @main.route('/', methods = ['GET', 'POST'])
 @login_required
@@ -554,6 +559,8 @@ def findProblem_change():
     return render_template('find_problem.html', problems=all_problem)
 
 
+
+# vscode 채팅
 @main.route('/chat', methods=['GET', 'POST'])
 def chatrooms():
     token = request.args.get('token')
@@ -613,16 +620,75 @@ def comments_get():
     return make_response(jsonify(comments_dict), 200)
 
 
-@main.route('/upload_video/<problem_title>', methods=['POST'])
-def upload_video(problem_title):
-    a = request.files['file']
-    print(a.filename) # video.mp4
-    v_path = os.path.join(path, 'code')
-    print(v_path) # /home/codelab/ver1/app/main/code
-                         
-    a.save(os.path.join(v_path, a.filename))
-                         
-    resp = jsonify({'message': 'Not exist Code'})
-    resp.status_code = 200
-    return resp
+# 프로그래밍 실습 평균데이터 전송
+@main.route('/practice/<username>', methods=['POST'])
+def get_practice_codes_data(username):
+    jsonData = request.get_json(force = True)
+    username = jsonData['username']
+    user_id = jsonData['user_id']
     
+    user = User.query.filter_by(username=username).first()
+    users = Log.query.group_by(Log.user_id).all()
+    log = Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first()
+    
+    ones = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first() for user in users]
+    threes = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
+    tens = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
+    
+    threes_length = [[i.length for i in three] for three in threes] # [[50, 25, 25], [25]]
+    tens_length = [[i.length for i in ten] for ten in tens]
+    
+    ones_minute = [one.length for one in ones]
+    threes_minute = [round(sum(three_length)/3) for three_length in threes_length]
+    tens_minute = [round(sum(ten_length)/10) for ten_length in tens_length]
+    
+    
+    users = [user.username for user in users]
+    data = {'users': users, 'code':log.code, 'ones_minute': ones_minute, 'threes_minute': threes_minute, 'tens_minute': tens_minute};
+    
+    return make_response(jsonify(data), 200)
+
+# 프로그래밍 실습 학생 코드 받기
+@main.route('/practice/<username>', methods=['GET'])
+def get_practice_codes(username):
+    # token = request.args.get('token')
+    # username = request.args.get('username')
+    # user_id = None
+    # if token is not None and username is not None:
+    #     user_id = User.verify_auth_token(token)
+    # if user_id is None:
+    #     return render_template('403.html')
+    
+    user_id=1#temp
+    
+    user = User.query.filter_by(username=username).first()
+    users = Log.query.group_by(Log.user_id).all()
+    log = Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first()
+    
+    ones = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first() for user in users]
+    threes = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
+    tens = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
+    
+    threes_length = [[i.length for i in three] for three in threes] # [[50, 25, 25], [25]]
+    tens_length = [[i.length for i in ten] for ten in tens]
+    
+    ones_minute = [one.length for one in ones]
+    threes_minute = [round(sum(three_length)/3) for three_length in threes_length]
+    tens_minute = [round(sum(ten_length)/10) for ten_length in tens_length]
+
+    return render_template('main/programming_practice.html', user_id=user_id, code=log.code, username=username, users=users, ones_minute=ones_minute, threes_minute=threes_minute, tens_minute=tens_minute, zip=zip)
+
+@main.route('/practice/matplot/<username>.png', methods=['GET'])
+def matplot(username):
+    logs = Log.query.filter_by(username=username).all()
+    num_x_points = len(logs)
+    fig = Figure()
+    axis = fig.add_subplot(1, 1, 1)
+    x_points = [i for i in range(1, num_x_points+1)]
+    axis.plot(x_points, [i.length for i in logs])
+    
+    
+    output = io.BytesIO()
+    FigureCanvasSVG(fig).print_svg(output)
+    
+    return Response(output.getvalue(), mimetype="image/svg+xml")

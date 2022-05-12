@@ -1,0 +1,147 @@
+{% extends "base3.html" %}
+
+{% block title %}Code Labhub{% endblock %}
+
+{% block content %}
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <h3>Show Graph</h3>
+        </div>
+
+        <ul class="list-unstyled components">
+            <li class="active">
+                <a href="#homeSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">User Graph</a>
+                <ul class="collapse list-unstyled" id="homeSubmenu">
+                    <div class="userlist">
+                        
+            
+                        <img src="/practice/matplot/{{ username }}.png"
+                            alt="random points as svg"
+                            height="350"
+                            id="statistic"
+                            width="400"
+                        >
+                    </div>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <div id="content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <button type="button" id="sidebarCollapse" class="btn btn-info">
+                    <i class="fas fa-align-left"></i>
+                    <span>Show User Graph</span>
+                </button>
+            </div>
+        </nav>
+        <div class="row">
+            <div id='code-average'>
+                <h3>{{ username }}</h3>
+                {% for user, one_minute, three_minute, ten_minute in zip(users, ones_minute, threes_minute, tens_minute) %}
+                    <a class="each-href" href="{{ url_for('main.get_practice_codes', username = user.username) }}">
+                        <div class="each-data">{{ user.username }}  {{ one_minute }} / {{ three_minute }} / {{ten_minute }} </div>
+                    </a>
+                {% endfor %}
+                {% for i in range(60) %}    
+                    <a class="each-href" href="">
+                        <div class="each-data"></div>
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="input-area">
+                <textarea id="editor" name="code" class="code">{{ code }}</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    $(document).ready(function () {
+
+    $('#sidebarCollapse').on('click', function () {
+        $('#sidebar').toggleClass('active');
+    });
+
+    });
+    let flag = 1;
+
+    var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+        mode: "text/x-csrc",
+        theme: "dracula",
+        lineNumbers: true,
+        indentUnit: 4,
+    })
+    editor.setSize(550, 500);
+
+    let username = "{{ username }}";
+    let user_id = "{{ user_id }}";
+    
+    setInterval(function () {
+        var html_body = $('#comment').val();
+        var data = {
+                username: username,
+                user_id: user_id
+                // TODO token을 이용해서 인증도 나중에 해야함
+        }
+        fetch(`${window.origin}/practice/${username}`, {
+                method: "POST",
+                credentials: "include",
+                body: JSON.stringify(data),
+                cache: "no-cache",
+                headers: new Headers({
+                        "content-type": "application/json"
+                })
+        }).then(function (response) {
+                if (response.status !== 200) {
+                        console.log(`Looks like there was a problem. Status code: ${response.status}`);
+                        return;
+                }
+                response.json().then(function (datas) {
+                        for(var i=0; i<datas['users'].length; i++) {
+                            document.getElementsByClassName("each-data")[i].innerHTML = `${datas['users'][i]} ${datas['ones_minute'][i]} / ${datas['threes_minute'][i]} / ${datas['tens_minute'][i]}`;
+                            $(".each-href").attr('href', `/practice/${datas['users'][i]}`);
+                        }
+                        
+                        let d = new Date();
+                        $("#statistic").attr("src", "/practice/matplot/{{ username }}.png?"+d.getTime());
+                        editor.setValue(datas['code']);
+
+
+                });
+        }).catch(function (error) {
+                console.log("Fetch error: " + error);
+        });
+    }, 3000);
+
+    $(document).ready(function () {
+        $("#sidebar").mCustomScrollbar({
+            theme: "minimal"
+        });
+
+        $('#dismiss, .overlay').on('click', function () {
+            // hide sidebar
+            $('#sidebar').removeClass('active');
+            // hide overlay
+            $('.overlay').removeClass('active');
+        });
+
+        $('#sidebarCollapse').on('click', function () {
+            // open sidebar
+            $('#sidebar').addClass('active');
+            // fade in the overlay
+            $('.overlay').addClass('active');
+            $('.collapse.in').toggleClass('in');
+            $('a[aria-expanded=true]').attr('aria-expanded', 'false');
+        });
+    });
+    
+</script>
+
+
+{% endblock %}

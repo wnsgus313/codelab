@@ -90,7 +90,7 @@ class Code(db.Model):
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), index=True)
+    username = db.Column(db.String(64), unique=True, index=True)
     email = db.Column(db.String(64), unique=True, index=True)
     student_id = db.Column(db.String(64), unique=True, index=True)
     # role = db.Column(db.Integer, default=0)
@@ -265,7 +265,7 @@ class Post(db.Model):
     __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 class AnonymousUser(AnonymousUserMixin):
@@ -281,7 +281,21 @@ class Comment(db.Model):
     __tablename__ = 'comment'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    username = db.Column(db.String(64))
+    username = db.Column(db.String(64)) # 닉네임
     body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-
+    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
+    def __repr__(self):
+        return f'{self.user_id}, {self.body}, {self.timestamp}'
+    
+class Log(db.Model):
+    __tablename__ = 'log'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    username = db.Column(db.String(64), index=True)
+    code = db.Column(db.Text)
+    length = db.Column(db.Integer)
+    total_length = db.Column(db.Integer)
+    flag = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
+    def __repr__(self):
+        return f'{self.user_id}, {self.code}, {self.timestamp}, {self.length}\n'
