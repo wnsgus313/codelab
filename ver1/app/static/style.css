@@ -7,7 +7,7 @@ a { text-decoration:none !important }
 a:hover { text-decoration:none !important }
 
 .dark2 {
-  max-width: 380px;
+  max-width: 580px;
   margin: 0 auto;
   background: rgb(48, 48, 48);
   color: white;
@@ -135,6 +135,23 @@ a:hover { text-decoration:none !important }
     box-shadow: 0 1px 2px 1px #FE6B8B;
 }
 
+.each-data {
+  height: 40px;
+  border: 2px solid darkgray;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  padding: 0 25px;
+  color: darkgrey;
+  font-size: 17px;
+  line-height: 1.5;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.each-data:hover{
+text-decoration:underline;
+}
+
 .switch {
     position: relative;
     display: inline-block;
@@ -234,14 +251,51 @@ ul.tabs li.current{
     resize: none;
 }
 
+.comment-top {
+  display: flex;
+  justify-content: center;
+  word-break: break-all;
+}
+
+.comment-line {
+  display: flex;
+  justify-content: flex-start;
+  align-items: end;
+  word-break: break-all;
+}
+
+.my-comment-line {
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  word-break: break-all;
+}
+
+.date-separator {
+  margin: 6px;
+}
+
+.name {
+  color:#04bcf4;
+}
+
 .comment-card {
   border-radius: 13px;
   background-color: white;
-  width: 90%;
+  width: 42%;
   height: auto;
   color: black;
   padding: 10px 10px;
-  margin: 10px auto;
+  margin: 3px 5px 3px 0px;
+}
+
+.my-comment-card {
+  border-radius: 13px;
+  background-color: white;
+  width: 42%;
+  color: black;
+  padding: 10px 10px;
+  margin: 3px 0px 3px 5px;
 }
 
 .username {

@@ -3,7 +3,8 @@
 #echo "$2" 2
 #echo "$1" bracket_{id}
 #echo $3 Bracket
-#echo "${0%/*}" /home/codelab/ver1/app/api/grading
+#echo $4 DS (Lab)
+#echo "$PWD_ID" /home/codelab/ver1/app/api/grading/Bracket
 
 
 if [ "$1" == "" -o "$2" == "" ];then
@@ -13,7 +14,8 @@ fi
 
 cd "${0%/*}"
 
-PWD_ID="$PWD"/"$3" # /home/codelab/ver1/app/api/grading/Bracket
+PWD_ID="$PWD"/"$4/$3" # /home/codelab/ver1/app/api/grading/DS/Bracket
+echo $PWD_ID
 
 if [ ! -e "$PWD_ID"/src/$1 ] || [ ! -e "$PWD"/check.sh ] || [ ! -e "$PWD_ID"/cases/input.txt ] || [ ! -e "$PWD_ID"/cases/programs/output.txt ]; then
 	echo "docker run error" ${3,,} "$PWD_ID"/src/$1 a "$PWD"/check.sh b "$PWD_ID"/cases/input.txt c "$PWD_ID"/cases/programs/${3,,} > $3/results/result_$2.txt
@@ -29,8 +31,7 @@ docker run --ulimit nofile=50:50 --ulimit nproc=100:100 --rm \
 --user root \
 run2 \
 bash -c "./check.sh $1 $2 $3" \
-> $3/results/result_$2.txt
-
+> $4/$3/results/result_$2.txt
 
 # docker run --ulimit nofile=50:50 --ulimit nproc=100:100 --rm \
 # -v "$PWD"/src/$1.c:/home/file/$1.c \

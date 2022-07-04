@@ -12,6 +12,11 @@ from . import db, login_manager
 import hashlib
 from flask import g
 
+class Regist(db.Model):
+    __tablename__ = 'regist'
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+
 class Permission:
     GENERAL = 1
     AFFILIATE = 2
@@ -98,7 +103,6 @@ class User(UserMixin, db.Model):
     member_since = db.Column(db.DateTime(), default=datetime.utcnow())
     last_seen = db.Column(db.DateTime(), default=datetime.utcnow() + timedelta(hours=9))
     avatar_hash = db.Column(db.String(32))
-    posts = db.relationship('Post', backref='author', lazy='dynamic')
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
 
     password_hash = db.Column(db.String(128))
@@ -222,51 +226,15 @@ class Problem(db.Model):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id', ondelete="CASCADE"))
+    room = db.relationship(
+        "Room",
+        back_populates="problem"
+    )
     
     def __repr__(self):
         return '<Problem %r>' % self.title
-
-# class Code(db.Model):
-#     __tablename__ = 'code'
-#     id = db.Column(db.Integer, primary_key=True)
-#     problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'))
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-#     source = db.Column(db.String(10000))
-#     pf = db.Column(db.Boolean, default=False)
-    
-#     def __repr__(self):
-#         return '<Code %r>' % self.pf
-
-
-
-class Input(db.Model):
-    __tablename__ = 'input'
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), primary_key=True)
-    input1 = db.Column(db.String(1000), nullable=True)
-    input2 = db.Column(db.String(1000), nullable=True)
-    input3 = db.Column(db.String(1000), nullable=True)
-    input4 = db.Column(db.String(1000), nullable=True)
-
-    def __repr__(self):
-        return '<Input %r>' % self.input1
-
-class Expected(db.Model):
-    __tablename__ = 'expected'
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), primary_key=True)
-    expected1 = db.Column(db.String(1000), nullable=True)
-    expected2 = db.Column(db.String(1000), nullable=True)
-    expected3 = db.Column(db.String(1000), nullable=True)
-    expected4 = db.Column(db.String(1000), nullable=True)
-
-    def __repr__(self):
-        return '<Expected %r>' % self.expected1
-
-class Post(db.Model):
-    __tablename__ = 'posts'
-    id = db.Column(db.Integer, primary_key=True)
-    body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
-    author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 class AnonymousUser(AnonymousUserMixin):
     def can(self, permissions):
@@ -283,7 +251,8 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     username = db.Column(db.String(64)) # 닉네임
     body = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow() + timedelta(hours=9))
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
     def __repr__(self):
         return f'{self.user_id}, {self.body}, {self.timestamp}'
     
@@ -297,5 +266,80 @@ class Log(db.Model):
     total_length = db.Column(db.Integer)
     flag = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime(), index=True, default=datetime.utcnow)
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id', ondelete="CASCADE"))
+    room = db.relationship(
+        "Room",
+        back_populates="log"
+    )
     def __repr__(self):
         return f'{self.user_id}, {self.code}, {self.timestamp}, {self.length}\n'
+
+
+class Room(db.Model):
+    __tablename__ = 'room'
+    id = db.Column(db.Integer, primary_key=True)
+    room_name = db.Column(db.String(128), unique=True)
+    host_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    ta = db.relationship(
+        "TA",
+        back_populates="room",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    problem = db.relationship(
+        "Problem",
+        back_populates="room",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    log = db.relationship(
+        "Log",
+        back_populates="room",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    video = db.relationship(
+        "Video",
+        back_populates="room",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+
+class TA(db.Model):
+    __tablename__ = "ta"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
+    room = db.relationship(
+        "Room",
+        back_populates="ta"
+    )
+    
+    def __repr__(self):
+        return f'{self.user_id}'
+
+class Video(db.Model):
+    __tablename__ = "video"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    video_name = db.Column(db.String(64), index=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
+    target_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    flag = db.Column(db.Integer, default=False)
+    room = db.relationship(
+        "Room",
+        back_populates="video"
+    )
+    
+    def __repr__(self):
+        return f'{self.user_id}'
+
+class Token(db.Model):
+    __tablename__ = "tokens"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    timestamp = db.Column(db.DateTime(), index=True, default= datetime.utcnow() + timedelta(hours=9))
+    
+    def __repr__(self):
+        return f'{self.user_id}, {self.timestamp}'

@@ -4,11 +4,11 @@ from flask import render_template, redirect, url_for, abort, flash, request,\
 from flask.wrappers import Response
 from . import main
 from .. import db
-from ..models import User, Problem, Code, Expected, Input, Post, Permission, Role, Comment, Log
+from ..models import User, Problem, Code, Permission, Role, Comment, Log, Room, Regist, TA, Token
 from flask_login import current_user, login_required
 import json, time
 import subprocess
-import time
+from datetime import datetime, timedelta
 import os.path
 from sys import stderr
 import os
@@ -24,6 +24,10 @@ from matplotlib.figure import Figure
 
 from werkzeug.utils import secure_filename
 from ..decorators import admin_required, permission_required, prof_required
+
+## er diagram
+from sqlalchemy import MetaData
+from sqlalchemy_schemadisplay import create_schema_graph
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -253,35 +257,35 @@ def problem(title):
 
     return render_template('main/1st.html', user=user, code=code, inputs=inputs, outputs=outputs, pfs=pfs, expecteds=expecteds, question=problem.body, title=title, problem_id=problem.id)
 
-
 @main.route('/', methods = ['GET', 'POST'])
 @login_required
 def index():
-    user = User.query.filter_by(id = current_user.id).first()
-    if request.method == 'POST':
-        title = request.form['title']
-        if Problem.query.filter_by(title = title).first() is None:
-            new_problem = Problem(title = title)
-            db.session.add(new_problem)
-            db.session.commit()
+    # user = User.query.filter_by(id = current_user.id).first()
+    # if request.method == 'POST':
+    #     title = request.form['title']
+    #     if Problem.query.filter_by(title = title).first() is None:
+    #         new_problem = Problem(title = title)
+    #         db.session.add(new_problem)
+    #         db.session.commit()
 
-            problem = Problem.query.filter_by(title = title).first()
-            input = Input(problem_id=problem.id)
-            expected = Expected(problem_id=problem.id)
-            db.session.add(input)
-            db.session.add(expected)
-            db.session.commit()
+    #         problem = Problem.query.filter_by(title = title).first()
+    #         input = Input(problem_id=problem.id)
+    #         expected = Expected(problem_id=problem.id)
+    #         db.session.add(input)
+    #         db.session.add(expected)
+    #         db.session.commit()
 
-            # make title dir
-            if not os.path.isdir(os.path.join(path, 'code', title)):
-                os.mkdir(os.path.join(path, 'code', title))
-                os.chmod(os.path.join(path, 'code', title), 0o777)
+    #         # make title dir
+    #         if not os.path.isdir(os.path.join(path, 'code', title)):
+    #             os.mkdir(os.path.join(path, 'code', title))
+    #             os.chmod(os.path.join(path, 'code', title), 0o777)
 
-        else:
-            flash("Title alreaey exist!")
+    #     else:
+    #         flash("Title already exist!")
 
-    problems = Problem.query.all()
-    return render_template('main/problem_list.html', problems=problems, user=user)
+    # problems = Problem.query.all()
+    # return render_template('main/user.html')
+    return redirect(url_for('.user', email=current_user.email))
 
 @main.route('/user/<email>')
 def user(email):
@@ -480,52 +484,51 @@ def enterChatroom():
 
     return render_template('main/enterChatroom.html', form=form)
 
-@main.route('/chatroom', methods=['GET', 'POST'])
-def chatroom():
-    if request.method == 'POST':
-        error = None    
-        jsonData = request.get_json(force = True)
-        body = jsonData['body']
-        comment = None
-        username = request.args.get('nickname', default="Anonymous")
+# @main.route('/chatroom', methods=['GET', 'POST'])
+# def chatroom():
+#     if request.method == 'POST':
+#         error = None    
+#         jsonData = request.get_json(force = True)
+#         body = jsonData['body']
+#         comment = None
+#         username = request.args.get('nickname', default="Anonymous")
 
-        if not body:
-            error = 'Comment is required'
+#         if not body:
+#             error = 'Comment is required'
         
-        if error is not None:
-            flash(error)
-        else:
-            comment = Comment(username = username, body = body)
-            db.session.add(comment)
-            db.session.commit()
+#         if error is not None:
+#             flash(error)
+#         else:
+#             comment = Comment(username = username, body = body)
+#             db.session.add(comment)
+#             db.session.commit()
 
-            data = {
-                "body": comment.body, 
-                "username": comment.username, 
-                "time": comment.timestamp,
-            }
+#             data = {
+#                 "body": comment.body, 
+#                 "username": comment.username, 
+#                 "time": comment.timestamp,
+#             }
             
-            return make_response(jsonify(data), 200)
+#             return make_response(jsonify(data), 200)
         
-    comments = Comment.query.filter_by().all()
-    return render_template('main/chatroom.html', comments = comments)
+#     comments = Comment.query.filter_by().all()
+#     return render_template('main/chatroom.html', comments = comments)
 
-@main.route('/get_comments', methods=['POST'])
-def get_comments():
-    data = request.get_json()
-    comments = Comment.query.all()
-    # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
-    comments_dict = [] 
-    for comment in comments:
-        comments_dict.append(
-            {
-                "body": comment.body, 
-                "username": comment.username, 
-                "time": comment.timestamp,
-            }
-        )
-    return make_response(jsonify(comments_dict), 200)
-
+# @main.route('/get_comments', methods=['POST'])
+# def get_comments():
+#     data = request.get_json()
+#     comments = Comment.query.all()
+#     # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
+#     comments_dict = [] 
+#     for comment in comments:
+#         comments_dict.append(
+#             {
+#                 "body": comment.body, 
+#                 "username": comment.username, 
+#                 "time": comment.timestamp,
+#             }
+#         )
+#     return make_response(jsonify(comments_dict), 200)
 
 @main.route('/find-problem', methods=['GET', 'POST'])
 @login_required
@@ -561,13 +564,16 @@ def findProblem_change():
 
 
 # vscode 채팅
-@main.route('/chat', methods=['GET', 'POST'])
-def chatrooms():
+@main.route('/<lab>/chat', methods=['GET', 'POST'])
+def chatrooms(lab):
     token = request.args.get('token')
-    username = request.args.get('username')
+    username = None
     user_id = None
-    if token is not None and username is not None:
-        user_id = User.verify_auth_token(token)
+    room_id = Room.query.filter_by(room_name=lab).first().id
+    if token is not None:
+        if User.verify_auth_token(token) is not None:
+            user_id = User.verify_auth_token(token).id
+            username = User.query.filter_by(id=user_id).first().username
         
     if request.method == 'POST':
         error = None    
@@ -575,7 +581,7 @@ def chatrooms():
         body = jsonData['body']
         username = jsonData['username']
         user_id = jsonData['user_id']
-
+        print(body)
         comment = None
 
         if not body:
@@ -584,15 +590,21 @@ def chatrooms():
         if error is not None:
             flash(error)
         else:
-            comment = Comment(user_id = user_id, username = username, body = body)
+            time = datetime.now()
+            comment = Comment(user_id = user_id, username = username, body = body, room_id=room_id, timestamp=time)
             db.session.add(comment)
             db.session.commit()
+            # time = comment.timestamp.strftime('%p %H:%M')
 
+            time = time.strftime('%p %H:%M')
+            # times = time.strftime('%Y년-%m월-%d일')
             data = {
                 "body": comment.body, 
                 "username": comment.username, 
-                "time": comment.timestamp,
+                "time": time,
                 "username": username,
+                "room_id": room_id,
+                # "times": times
             }
             
             return make_response(jsonify(data), 200)
@@ -600,87 +612,112 @@ def chatrooms():
     if user_id is None:
         return render_template('403.html')
 
-    comments = Comment.query.filter_by().all()
-    return render_template('main/chat.html', comments = comments, user_id=user_id, username=username)
+    comments = Comment.query.filter_by(room_id=room_id).all()
+    return render_template('main/chat.html', comments = comments, user_id=user_id, username=username, room_name=lab, room_id=room_id)
 
-@main.route('/comments_get', methods=['POST'])
-def comments_get():
+@main.route('/<room_name>/comments_get', methods=['POST'])
+def comments_get(room_name):
     data = request.get_json()
-    comments = Comment.query.all()
+    room_id = Room.query.filter_by(room_name=room_name).first().id
+    comments = Comment.query.filter_by(room_id=room_id).all()
     # comments = Comment.query.filter_by(room_id = room_id, group = group).all()
     comments_dict = [] 
+    saveTime = datetime.today() - timedelta(1)
+    minus = False
     for comment in comments:
+        saveMinus = comment.timestamp - saveTime
+        if saveMinus.days > 0:
+            minus = True
         comments_dict.append(
             {
                 "body": comment.body, 
                 "username": comment.username, 
-                "time": comment.timestamp,
+                "time": comment.timestamp.strftime('%p %H:%M'),
+                "times": comment.timestamp.strftime('%Y년-%m월-%d일'),
+                "minus": minus
             }
         )
+        saveTime = comment.timestamp
+        minus = False
     return make_response(jsonify(comments_dict), 200)
 
 
 # 프로그래밍 실습 평균데이터 전송
-@main.route('/practice/<username>', methods=['POST'])
-def get_practice_codes_data(username):
+@main.route('/<lab>/practice', methods=['POST'])
+def get_practice_codes_data(lab):
     jsonData = request.get_json(force = True)
     username = jsonData['username']
     user_id = jsonData['user_id']
+    monitoringUser = jsonData['monitoringUser']
+
+    lab = Room.query.filter_by(room_name=lab).first()
     
     user = User.query.filter_by(username=username).first()
-    users = Log.query.group_by(Log.user_id).all()
-    log = Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first()
-    
-    ones = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first() for user in users]
-    threes = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
-    tens = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
+    users = [User.query.filter_by(id=regist.user_id).first() for regist in Regist.query.filter_by(room_id=lab.id).all()]
+    log = Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).first()
+    monitoringUser_log = Log.query.filter_by(username=monitoringUser, room_id=lab.id).order_by(Log.timestamp.desc()).first()
+
+    ones = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).first() for user in users]
+    threes = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
+    tens = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
     
     threes_length = [[i.length for i in three] for three in threes] # [[50, 25, 25], [25]]
     tens_length = [[i.length for i in ten] for ten in tens]
     
-    ones_minute = [one.length for one in ones]
+    ones_minute = [one.length if one is not None else 0 for one in ones]
     threes_minute = [round(sum(three_length)/3) for three_length in threes_length]
     tens_minute = [round(sum(ten_length)/10) for ten_length in tens_length]
     
-    
+    if monitoringUser_log is not None:
+        code = monitoringUser_log.code
+
+    else:
+        code = ''
+
     users = [user.username for user in users]
-    data = {'users': users, 'code':log.code, 'ones_minute': ones_minute, 'threes_minute': threes_minute, 'tens_minute': tens_minute};
+    data = {'users': users, 'code':code, 'ones_minute': ones_minute, 'threes_minute': threes_minute, 'tens_minute': tens_minute}
     
     return make_response(jsonify(data), 200)
 
 # 프로그래밍 실습 학생 코드 받기
-@main.route('/practice/<username>', methods=['GET'])
-def get_practice_codes(username):
-    # token = request.args.get('token')
-    # username = request.args.get('username')
-    # user_id = None
-    # if token is not None and username is not None:
-    #     user_id = User.verify_auth_token(token)
-    # if user_id is None:
-    #     return render_template('403.html')
+@main.route('/<lab>/practice', methods=['GET'])
+def get_practice_codes(lab):
+    token = request.args.get('token')
+    username = None
+    user_id = None
+    if token is not None:
+        if User.verify_auth_token(token) is not None:
+            user_id = User.verify_auth_token(token).id
+            username = User.query.filter_by(id=user_id).first().username
+            print(username)
+
+    lab = Room.query.filter_by(room_name=lab).first()
+
+    users = [User.query.filter_by(id=regist.user_id).first() for regist in Regist.query.filter_by(room_id=lab.id).all()]
+    log = Log.query.filter_by(username=username, room_id=lab.id).order_by(Log.timestamp.desc()).first()
     
-    user_id=1#temp
-    
-    user = User.query.filter_by(username=username).first()
-    users = Log.query.group_by(Log.user_id).all()
-    log = Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first()
-    
-    ones = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).first() for user in users]
-    threes = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
-    tens = [Log.query.filter_by(username=user.username).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
+    ones = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).first() for user in users]
+    threes = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).limit(3).all() for user in users]
+    tens = [Log.query.filter_by(username=user.username, room_id=lab.id).order_by(Log.timestamp.desc()).limit(10).all() for user in users]
     
     threes_length = [[i.length for i in three] for three in threes] # [[50, 25, 25], [25]]
     tens_length = [[i.length for i in ten] for ten in tens]
     
-    ones_minute = [one.length for one in ones]
+    ones_minute = [one.length if one is not None else 0 for one in ones]
     threes_minute = [round(sum(three_length)/3) for three_length in threes_length]
     tens_minute = [round(sum(ten_length)/10) for ten_length in tens_length]
 
-    return render_template('main/programming_practice.html', user_id=user_id, code=log.code, username=username, users=users, ones_minute=ones_minute, threes_minute=threes_minute, tens_minute=tens_minute, zip=zip)
+    if log is not None:
+        code = log.code
+    else:
+        code = ''
 
-@main.route('/practice/matplot/<username>.png', methods=['GET'])
-def matplot(username):
-    logs = Log.query.filter_by(username=username).all()
+    return render_template('main/programming_practice.html', user_id=user_id, code=code, username=username, users=users, ones_minute=ones_minute, threes_minute=threes_minute, tens_minute=tens_minute, zip=zip, lab_name=lab.room_name, lab_id=lab.id)
+
+@main.route('/<lab>/practice/matplot/<username>.png', methods=['GET'])
+def matplot(lab, username):
+    room = Room.query.filter_by(room_name=lab).first()
+    logs = Log.query.filter_by(username=username, room_id=room.id).all()
     num_x_points = len(logs)
     fig = Figure()
     axis = fig.add_subplot(1, 1, 1)
@@ -692,3 +729,35 @@ def matplot(username):
     FigureCanvasSVG(fig).print_svg(output)
     
     return Response(output.getvalue(), mimetype="image/svg+xml")
+
+## 첫화면
+@main.route('/firstView', methods=['GET'])
+def firstView():
+
+    users = User.query.count()
+
+    curr = Token.query.count()
+
+    print(users)
+
+    resp = jsonify({'users': users, 'curr': curr})
+    resp.status_code = 200
+    return resp
+
+
+
+
+@main.route('/diagram', methods=['GET'])
+def diagram():
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    graph = create_schema_graph(metadata=MetaData(basedir),
+        show_datatypes=False,
+        show_indexes=False,
+        rankdir='LR',
+        concentrate=False
+    )
+    graph.write_png('dbschema.png')
+    print(basedir + 'aaaa')
+    resp = jsonify({'users': 's', 'curr': 'curr'})
+    resp.status_code = 200
+    return resp

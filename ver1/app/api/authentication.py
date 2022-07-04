@@ -1,8 +1,10 @@
 from flask import g, jsonify
 from flask_httpauth import HTTPBasicAuth
-from ..models import User
+from ..models import User, Room, Regist, TA, Token
 from . import api
 from .errors import unauthorized, forbidden
+from datetime import datetime
+from .. import db
 
 auth = HTTPBasicAuth()
 
@@ -41,8 +43,25 @@ def before_request():
 def get_token():
     if g.token_used:
         return unauthorized('Invalid credentials')
-    username = User.query.filter_by(id=g.current_user.id).first().username
-    role = User.query.filter_by(id=g.current_user.id).first().role_id
+
+    now = datetime.now()
+
+    tokens_all = Token.query.all()
+    if tokens_all is not None:
+        for tokens in tokens_all:
+            diff = now - tokens.timestamp
+            if tokens.user_id == g.current_user.id:
+                db.session.delete(tokens)
+                db.session.commit()
+            elif diff.seconds > 3600:
+                db.session.delete(tokens)
+                db.session.commit()
+
+    token = Token(user_id=g.current_user.id)
+    db.session.add(token)
+    db.session.commit()
 
     return jsonify({'token': g.current_user.generate_auth_token(
-        expiration=3600), 'expiration': 3600, 'username': username, 'role': role})
+        expiration=3600), 'expiration': 3600})
+
+    

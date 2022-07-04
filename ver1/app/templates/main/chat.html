@@ -5,26 +5,63 @@
 
 {% block content %}
 <section class="comments">
+        <h2>{{ room_name }}</h2>
         <div class="comments" id="comments">
+                {% set commentDate = namespace(time="0") %}
+                {% set commentUserID = namespace(user_id=0) %}
                 {% for comment in comments %}
-                        <div class="comment-card" >
-                                <div class="username">{{ comment.username }}</div>
-                                <div>{{ comment.body }}</div>
+                        {% if commentDate.time != comment.timestamp.strftime('%Y년 %m월 %d일 %a') %}
+                        
+                        {% set commentDate.time = comment.timestamp.strftime('%Y년 %m월 %d일 %a') %}
+                        <div class="date-separator">--------------------------------------{{ commentDate.time }}--------------------------------------</div>
+                        
+                        {% endif %}
+
+
+                        {% if (commentUserID.user_id != comment.user_id) and (user_id != comment.user_id) %}
+
+                        {% set commentUserID.user_id = comment.user_id %}
+                        <div class="name">{{ comment.username }}</div>
+                        {% endif %}
+                        
+                        {% if (commentUserID.user_id != comment.user_id) %}
+                        {% set commentUserID.user_id = 0 %}
+                        {% endif %}
+
+                        {% if comment.username == username %}
+                        <div class="my-comment-line">
+                                <div class="time">{{ comment.timestamp.strftime('%p %H:%M') }}</div>
+                                <div class="my-comment-card" >
+                                        <div>{{ comment.body|safe }}</div>
+                                </div>
                         </div>
+                        {% else %}
+                        <div class="comment-line">
+                                <div class="comment-card" >
+                                        <div>{{ comment.body|safe }}</div>
+                                </div>
+                                <div class="time">{{ comment.timestamp.strftime('%p %H:%M') }}</div>
+                        </div>
+                        {% endif %}
                 {% endfor %}
         </div>
 </section>
-<div style="display: flex;">      
-        <textarea class="underline" name="comment" id="comment" style="width: 300px;" placeholder="Enter the comment" style="color: black;" required></textarea>
+<div style="display: flex; margin: 20px 0px">
+        <textarea class="underline" name="comment" id="comment" style="width: 560px;" placeholder="Enter the comment" style="color: black;" required></textarea>
         <button onclick='make_comment()' class="comment-btn">send</button>
 </div>
 <script>
         let username = "{{ username }}";
         let user_id = "{{ user_id }}";
+        let room_name = "{{ room_name }}"
+
         function make_comment() {                
-                console.log('click ' + `${window.origin}/chat`);
+                console.log('click ' + `${window.origin}/chat`, username);
 
                 var html_body = $('#comment').val();
+                html_body = html_body.split(' ').join('&nbsp;');
+                html_body = html_body.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+                html_body = html_body.replace(/(?:\r\n|\r|\n)/g, '<br />');
                 var data = {
                         body: html_body,
                         username: username,
@@ -33,7 +70,7 @@
                 }
                 $('#comment').val('');
                 
-                fetch(`${window.origin}/codelab/chat`, {
+                fetch(`${window.origin}/${room_name}/chat`, {
                         method: "POST",
                         credentials: "include",
                         body: JSON.stringify(data),
@@ -49,17 +86,23 @@
                         response.json().then(function (data) {
                                 var datas = data;
                                 console.log(data.body)
-                                var body = "";
-                                body += "<div class='comment-card' ><div class='username'>"+data.username + "</div>" ;
-                                body += "<div>"+data.body + "</div></div>";
+                                let body = `
+                                        <div class="my-comment-line">
+                                                <div class="time">${data.time}</div>
+                                                <div class="my-comment-card" >
+                                                        <div>${data.body}</div>
+                                                </div>
+                                        </div>
+                                        `;
                                 $("#comments").append(body);
-                                $("#comment").val(' ');
+                                $("#comment").val('');
                         });
                 })
                 .catch(function (error) {
                         console.log("Fetch error: " + error);
                 });
         }
+        
 
         setInterval(function () {
                 var html_body = $('#comment').val();
@@ -67,9 +110,10 @@
                         body: html_body,
                         username: username,
                         user_id: user_id
-                        // TODO token을 이용해서 인증도 나중에 해야함
                 }
-                fetch(`${window.origin}/codelab/comments_get`, {
+                let commentUserId = 0;
+                let commentDate = "0";
+                fetch(`${window.origin}/${room_name}/comments_get`, {
                         method: "POST",
                         credentials: "include",
                         body: JSON.stringify(data),
@@ -83,19 +127,50 @@
                                 return;
                         }
                         response.json().then(function (data) {
-                                var datas = data
-                                var body = ""
-                                for(var i=0; i<datas.length; i++) {
-                                        body += " <div class='comment-card' ><div class='username'>"+datas[i].username + "</div>" ;
-                                        body += "<div>"+datas[i].body + "</div></div>";
+                                var datas = data;
+                                var body = "";
+                                let commentUserIDs = commentUserId;
+                                let commentDates = commentDate;
+                                for(var i = 0; i < datas.length; i++) {
+                                        if (datas[i].minus == true) {
+                                                console.log(datas[i].times);
+                                                commentDates = datas[i].times;
+                                                body += `<div class="date-separator">----------------------------------------${commentDates}----------------------------------------</div>`;
+                                        }
+                                        if (commentUserIDs != datas[i].user_id && user_id != datas[i].user_id) {
+                                                commentUserIDs = datas[i].user_id;
+                                                body += `<div class="name">${datas[i].username}</div>`;
+                                        }
+                                        if (commentUserIDs != datas[i].user_id) {
+                                                commentUserIds = 0;
+                                        } 
+                                        if (datas[i].username == username) {
+                                                body += `<div class="my-comment-line">
+                                                                <div class="time">${datas[i].time}</div>
+                                                                <div class="my-comment-card" >
+                                                                        <div>${datas[i].body}</div>
+                                                                </div>
+                                                        </div>`;
+                                                
+                                        }
+                                        else {
+                                                body += `<div class="comment-line">
+                                                                <div class="comment-card" >
+                                                                        <div>${datas[i].body}</div>
+                                                                </div>
+                                                                <div class="time">${datas[i].time}</div>
+                                                        </div>`;
+                                        }
+                                        // body += " <div class='comment-card' ><div class='username'>"+datas[i].username + "</div>" ;
+                                        // body += "<div>"+datas[i].body + "</div></div>";
                                 }
                                 document.getElementById("comments").innerHTML = body;
+                                
                         });
                 }).catch(function (error) {
                         console.log("Fetch error: " + error);
                 });
-        }, 2000);
-
+        }, 1000);
 
 
 </script>
